@@ -8,6 +8,8 @@ This template provides a production-ready foundation for creating **iframe-based
 - A **sandboxed iframe UI** (Svelte 5)
 - A **typed, action-based postMessage bridge** compatible with Flotilla
 
+> **Note:** This template is specifically for **Smart Widgets (kind 30033)**. Flotilla also supports **NIP-89 Manifest Extensions (kind 31990)**, which use a different discovery and registration model. For NIP-89 extensions, see the [Flotilla Extension Developer Guide](../../docs/extensions/README.md) which covers both extension types comprehensively.
+
 ## What is a Smart Widget?
 
 A Flotilla Smart Widget is represented on Nostr as a **kind `30033` addressable event**. The event describes:
@@ -244,6 +246,17 @@ Smart Widget docs live in `docs/` and cover:
 - [Manifest](./docs/manifest.md) - Kind 30033 event structure
 - [Security](./docs/security.md) - Security guidelines
 - [Quick Start](./docs/quickstart.md) - Getting started guide
+
+### Extension Types in Flotilla
+
+Flotilla supports two complementary extension models:
+
+| Model | Event Kind | Discovery | Use Case |
+|-------|-----------|-----------|----------|
+| **Smart Widgets** (this template) | 30033 | YakiHonne relays | Rich, event-based widgets rendered inline or in iframes |
+| **NIP-89 Manifest Extensions** | 31990 | INDEXER_RELAYS or HTTPS URL | Full iframe apps with JSON manifests |
+
+For comprehensive documentation covering both models, including migration guidance and interoperability, see the [Flotilla Extension Developer Guide](../../docs/extensions/README.md).
 
 ## License
 

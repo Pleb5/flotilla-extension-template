@@ -2,6 +2,8 @@
 
 Technical architecture of Flotilla Smart Widgets.
 
+> **Note:** This document covers Smart Widget architecture specifically. Flotilla also supports NIP-89 Manifest Extensions (kind 31990), which share the same postMessage bridge protocol but differ in discovery and registration. For the full extension architecture covering both models, see the [Flotilla Extension Developer Guide](../../../docs/extensions/README.md).
+
 ## System Architecture
 
 Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable events**. Flotilla discovers these events, renders them into the UI, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host using an **action-based postMessage protocol**.
