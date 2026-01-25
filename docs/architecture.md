@@ -141,21 +141,38 @@ Widget iframe                         Host
     │<─────────────────────────────────┤
 ```
 
-### Example: Host Sends Context (Optional Demo)
+### Example: Host Sends Lifecycle Events
 
-Hosts may send context information (optional):
+The host sends lifecycle events at key moments. See [Lifecycle Events](./lifecycle.md) for full documentation.
 
-- Action: `context:update`
-- Payload: `WidgetContext` (contextId, userPubkey, relays, etc.)
+**Initialization:**
+- `widget:init` - Initial context with extensionId, repoContext, hostVersion
+
+**Mount:**
+- `widget:mounted` - Iframe loaded and bridge ready
+
+**Context Updates:**
+- `context:repoUpdate` - Repository context has changed
+
+**Cleanup:**
+- `widget:unmounting` - Widget about to be removed, cleanup now
 
 ```
 Host                                Widget iframe
   │                                     │
-  │ event context:update                │
+  │ event widget:init                   │
   ├────────────────────────────────────>│
+  │     { extensionId, repoContext,     │
+  │       hostVersion }                 │
   │                                     │
-  │                          updates UI (optional)
+  │ event widget:mounted                │
+  ├────────────────────────────────────>│
+  │     { mountedAt, slot, viewport }   │
+  │                                     │
+  │                          updates UI, starts operations
 ```
+
+Widgets can also proactively fetch context using `context:getRepo` request action.
 
 ## Package Architecture (Template)
 
@@ -173,7 +190,8 @@ A Svelte 5 Smart Widget UI demonstrating a `tool` widget:
 
 - Calls host actions via `bridge.request(\"nostr:publish\", ...)`
 - Shows UI feedback via `bridge.request(\"ui:toast\", ...)`
-- Optionally displays host context received via `bridge.onEvent(\"context:update\", ...)`
+- Handles lifecycle events: `widget:init`, `widget:mounted`, `widget:unmounting`
+- Optionally handles `context:repoUpdate` for repository context changes
 
 ### Manifest/Generator (`@flotilla/ext-manifest`)
 
@@ -233,7 +251,7 @@ Widgets should:
 
 Widgets typically manage:
 - local reactive state (Svelte)
-- optional host-provided context (`context:update`)
+- host-provided context via lifecycle events (`widget:init`, `context:repoUpdate`)
 - async in-flight requests (publish results, error states)
 
 ### Nostr Publish Flow (Host Capability)

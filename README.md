@@ -87,7 +87,7 @@ Flotilla uses an action-based postMessage protocol:
 This template’s shared package provides a typed `WidgetBridge` with:
 
 - `request(action, payload) -> Promise<responsePayload>`
-- `onEvent(action, handler)` for host-initiated events (demo: `context:update`)
+- `onEvent(action, handler)` for host-initiated events (lifecycle: `widget:init`, `widget:mounted`, `widget:unmounting`)
 - `onRequest(action, handler)` for bidirectional "tool" widgets (host can request work from the iframe)
 
 ### Example: publish a note + show a toast
@@ -110,17 +110,35 @@ async function publishNote(content: string) {
 }
 ```
 
-### Optional/demo: receive host context
+### Handle lifecycle events
 
-Hosts may send context information as an event:
+The host sends lifecycle events at key moments:
 
 ```ts
-bridge.onEvent('context:update', (ctx) => {
-  console.log('Context:', ctx.contextId, ctx.userPubkey, ctx.relays);
+// Receive initial context on init
+bridge.onEvent('widget:init', (payload) => {
+  console.log('Extension ID:', payload.extensionId);
+  console.log('Host version:', payload.hostVersion);
+  if (payload.repoContext) {
+    console.log('Repository:', payload.repoContext.fullName);
+  }
+});
+
+// Know when bridge is ready for operations
+bridge.onEvent('widget:mounted', (payload) => {
+  console.log('Mounted at:', payload.mountedAt);
+  initializeWidget();
+});
+
+// Cleanup before removal
+bridge.onEvent('widget:unmounting', (payload) => {
+  console.log('Unmounting, reason:', payload.reason);
+  saveState();
+  bridge.destroy();
 });
 ```
 
-This is optional: the widget should still run without context.
+For repository context changes, handle `context:repoUpdate`. To proactively fetch context, use `bridge.request('context:getRepo', {})`.
 
 ## Permissions
 
@@ -162,7 +180,8 @@ Svelte 5 iframe app demonstrating a Smart Widget "tool":
 
 - Calls host actions via `bridge.request('nostr:publish', ...)`
 - Calls UI actions via `bridge.request('ui:toast', ...)`
-- Displays optional host context received via `context:update`
+- Handles lifecycle events: `widget:init`, `widget:mounted`, `widget:unmounting`
+- Handles `context:repoUpdate` for repository context changes
 
 ### `@flotilla/ext-manifest`
 
@@ -217,10 +236,14 @@ pnpm manifest:generate \
 ## Documentation
 
 Smart Widget docs live in `docs/` and cover:
-- Architecture
-- Host bridge expectations
-- Security guidelines
-- Generator output formats
+- [Architecture](./docs/architecture.md) - System design and package structure
+- [Host Bridge](./docs/host-bridge.md) - Host integration guide
+- [Lifecycle Events](./docs/lifecycle.md) - Widget initialization, mount, and cleanup
+- [Storage API](./docs/storage.md) - Persistent data storage
+- [Slot System](./docs/slots.md) - Where widgets can be mounted
+- [Manifest](./docs/manifest.md) - Kind 30033 event structure
+- [Security](./docs/security.md) - Security guidelines
+- [Quick Start](./docs/quickstart.md) - Getting started guide
 
 ## License
 

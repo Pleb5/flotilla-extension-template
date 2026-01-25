@@ -154,17 +154,36 @@ Create `host-test.html` next to the repo root and open it in your browser:
         }
       });
 
-      // Demo: push context into the widget after it loads
+      // Send widget:init immediately (before load)
+      log("[host] sending widget:init");
+      iframe.contentWindow?.postMessage(
+        {
+          type: "event",
+          action: "widget:init",
+          payload: {
+            extensionId: "demo-widget",
+            hostVersion: "1.0.0",
+            repoContext: {
+              owner: "demo-org",
+              name: "demo-repo",
+              fullName: "demo-org/demo-repo",
+              defaultBranch: "main"
+            }
+          }
+        },
+        "*"
+      );
+
+      // Send widget:mounted once iframe is loaded
       iframe.addEventListener("load", () => {
-        log("[host] iframe loaded; sending context:update");
+        log("[host] iframe loaded; sending widget:mounted");
         iframe.contentWindow.postMessage(
           {
             type: "event",
-            action: "context:update",
+            action: "widget:mounted",
             payload: {
-              contextId: "demo-context",
-              userPubkey: "npub1...demo",
-              relays: ["wss://relay.damus.io", "wss://nos.lol"]
+              mountedAt: Date.now(),
+              slot: "room:panel"
             }
           },
           "*"

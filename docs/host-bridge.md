@@ -269,9 +269,9 @@ function createHostWidgetBridge(opts: {
 }
 ```
 
-### 5) Send optional host context (demo)
+### 5) Send lifecycle events and context
 
-This template supports an optional demo event: `context:update`.
+The host should send lifecycle events to the widget at appropriate times. See [Lifecycle Events](./lifecycle.md) for full documentation.
 
 ```ts
 const widgetOrigin = new URL(parsed.appUrl).origin;
@@ -293,18 +293,64 @@ const bridge = createHostWidgetBridge({
       return { eventId: "fake-event-id" };
     }
 
+    if (action === "context:getRepo") {
+      // Widget is proactively requesting repo context
+      return {
+        owner: "example-org",
+        name: "example-repo",
+        fullName: "example-org/example-repo",
+        defaultBranch: "main",
+      };
+    }
+
     throw new Error(`Unknown action: ${action}`);
   },
 });
 
-// Optional: send context once iframe is loaded
+// Send widget:init immediately after iframe creation
+bridge.postEvent("widget:init", {
+  extensionId: parsed.identifier,
+  hostVersion: "1.0.0",
+  repoContext: {
+    owner: "example-org",
+    name: "example-repo",
+    fullName: "example-org/example-repo",
+    defaultBranch: "main",
+  },
+});
+
+// Send widget:mounted once iframe is loaded and bridge ready
 iframe.addEventListener("load", () => {
-  bridge.postEvent("context:update", {
-    contextId: "demo-room",
-    userPubkey: "npub1...demo",
-    relays: ["wss://relay.damus.io", "wss://nos.lol"],
+  bridge.postEvent("widget:mounted", {
+    mountedAt: Date.now(),
+    slot: "room:panel",
+    viewport: { width: 400, height: 600 },
   });
 });
+
+// Send widget:unmounting before removal
+function unmountWidget() {
+  bridge.postEvent("widget:unmounting", {
+    reason: "navigation",
+    gracePeriodMs: 1000,
+  });
+
+  // Give widget time to cleanup, then remove
+  setTimeout(() => {
+    iframe.remove();
+    bridge.destroy();
+  }, 1000);
+}
+
+// For repo context changes, send context:repoUpdate
+function onRepoChange(newRepo) {
+  bridge.postEvent("context:repoUpdate", {
+    owner: newRepo.owner,
+    name: newRepo.name,
+    fullName: newRepo.fullName,
+    defaultBranch: newRepo.defaultBranch,
+  });
+}
 ```
 
 ## Handling Actions
