@@ -21,6 +21,7 @@ interface CLIOptions {
   identifier?: string;
   title: string;
   permissions: string;
+  nostrKinds?: string;
   pubkey?: string;
   output: string;
   slotType?: string;
@@ -34,6 +35,14 @@ function parsePermissions(csv: string): WidgetPermission[] {
     .split(',')
     .map((p) => p.trim())
     .filter((p) => p.length > 0) as WidgetPermission[];
+}
+
+function parseNostrKinds(csv: string | undefined): number[] {
+  if (!csv) return [];
+  return csv
+    .split(',')
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => Number.isFinite(n) && n >= 0);
 }
 
 function getIdentifierFromEventTags(tags: string[][]): string {
@@ -59,6 +68,7 @@ program
     'Comma-separated permissions (permission tags)',
     'nostr:publish,ui:toast'
   )
+  .option('--nostr-kinds <csv>', 'Comma-separated Nostr event kinds this widget queries (e.g. "30301,30302")')
   .option('--pubkey <hex>', 'Optional creator pubkey (hex) for widget.json (discovery tooling)')
   .option('--output <dir>', 'Output directory', 'dist/widget')
   .option('--slot-type <type>', 'Slot type for integration (e.g., repo-tab)')

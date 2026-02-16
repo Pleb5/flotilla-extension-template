@@ -4,15 +4,16 @@
     createWidgetBridge,
     createTextNote,
     type UnsignedEvent,
-    type WidgetContext,
+    type WidgetInitPayload,
+    type RepoContext,
   } from '@flotilla/ext-shared';
 
-  // Bridge + host-provided context (optional/demo)
+  // Bridge + host-provided context
   let bridge = $state<WidgetBridge | null>(null);
-  let context = $state<WidgetContext | null>(null);
+  let initPayload = $state<WidgetInitPayload | null>(null);
+  let repoContext = $state<RepoContext | null>(null);
 
   // UI state
-  let hasContext = $state(false);
   let note = $state('');
   let status = $state('Initializing Smart Widget...');
   let lastPublishResult = $state<string | null>(null);
@@ -27,20 +28,40 @@
     });
 
     bridge = b;
-    status = 'Ready. Waiting for optional host context...';
+    status = 'Ready. Waiting for host context...';
     lastPublishResult = null;
     lastError = null;
 
-    const offContext = b.onEvent('context:update', (ctx) => {
-      context = ctx;
-      hasContext = true;
-
-      const ctxId = typeof ctx?.contextId === 'string' ? ctx.contextId : undefined;
-      status = ctxId ? `Connected (contextId: ${ctxId})` : 'Connected (context received)';
+    // Listen for widget:init (new lifecycle event)
+    const offInit = b.onEvent('widget:init', (payload) => {
+      initPayload = payload as WidgetInitPayload | null;
+      const ver = initPayload?.hostVersion ?? 'unknown';
+      status = `Connected (host v${ver})`;
     });
 
+    // Listen for repo context updates (for repo-scoped extensions)
+    const offRepoUpdate = b.onEvent('context:repoUpdate', (ctx) => {
+      repoContext = ctx as RepoContext | null;
+      if (repoContext) {
+        status = `Connected — repo: ${repoContext.repoName}`;
+      }
+    });
+
+    // Also listen for deprecated context:update for backward compatibility
+    const offContextUpdate = b.onEvent('context:update', (ctx) => {
+      // Only use if we haven't received a repoUpdate and this isn't repo context
+      if (!repoContext && ctx && !('repoPubkey' in ctx)) {
+        status = 'Connected (context received via deprecated event)';
+      }
+    });
+
+    // Signal to the host that we're ready
+    b.signalReady();
+
     return () => {
-      offContext();
+      offInit();
+      offRepoUpdate();
+      offContextUpdate();
       b.destroy();
       bridge = null;
     };
@@ -49,9 +70,8 @@
   function buildNoteEvent(content: string): UnsignedEvent {
     const tags: string[][] = [];
 
-    const ctxId = typeof context?.contextId === 'string' ? context.contextId : undefined;
-    if (ctxId) {
-      tags.push(['h', ctxId]);
+    if (repoContext?.repoNaddr) {
+      tags.push(['a', repoContext.repoNaddr]);
     }
 
     return createTextNote(content, tags);
@@ -93,8 +113,8 @@
 
     lastError = null;
 
-    const message = hasContext
-      ? 'Hello from Smart Widget (context connected)'
+    const message = repoContext
+      ? `Hello from Smart Widget (repo: ${repoContext.repoName})`
       : 'Hello from Smart Widget';
 
     try {
@@ -113,47 +133,67 @@
       status = `Toast failed: ${msg}`;
     }
   }
+
+  async function requestResize(): Promise<void> {
+    if (!bridge) return;
+    try {
+      await bridge.request('ui:resize', { height: 400 });
+    } catch {
+      // Resize is best-effort
+    }
+  }
 </script>
 
 <div class="container">
   <header>
     <h1>Flotilla Smart Widget Template (Tool)</h1>
-    <p class="status" class:ready={hasContext}>{status}</p>
+    <p class="status" class:ready={!!initPayload}>{status}</p>
   </header>
 
-  {#if context}
+  {#if initPayload}
     <section class="context">
-      <h2>Host Context (optional)</h2>
+      <h2>Host Context</h2>
       <dl>
-        {#if context.contextId}
-          <dt>Context ID:</dt>
-          <dd>{String(context.contextId)}</dd>
-        {/if}
-
-        {#if context.userPubkey}
+        {#if initPayload.pubkey}
           <dt>User Pubkey:</dt>
-          <dd class="pubkey">{String(context.userPubkey)}</dd>
+          <dd class="pubkey">{String(initPayload.pubkey)}</dd>
         {/if}
 
-        {#if Array.isArray(context.relays) && context.relays.length > 0}
+        {#if initPayload.hostVersion}
+          <dt>Host Version:</dt>
+          <dd>{initPayload.hostVersion}</dd>
+        {/if}
+
+        {#if Array.isArray(initPayload.relays) && initPayload.relays.length > 0}
           <dt>Relays:</dt>
-          <dd>{context.relays.join(', ')}</dd>
+          <dd>{initPayload.relays.join(', ')}</dd>
         {/if}
       </dl>
 
+      {#if repoContext}
+        <h3>Repo Context</h3>
+        <dl>
+          <dt>Repo:</dt>
+          <dd>{repoContext.repoName}</dd>
+          <dt>Owner:</dt>
+          <dd class="pubkey">{repoContext.repoPubkey?.slice(0, 16) ?? 'unknown'}...</dd>
+          <dt>Relays:</dt>
+          <dd>{repoContext.repoRelays.join(', ')}</dd>
+        </dl>
+      {/if}
+
       <details class="context-raw">
-        <summary>Raw context payload</summary>
-        <pre>{JSON.stringify(context, null, 2)}</pre>
+        <summary>Raw init payload</summary>
+        <pre>{JSON.stringify(initPayload, null, 2)}</pre>
       </details>
     </section>
   {:else}
     <section class="waiting">
       <h2>Waiting for host context</h2>
       <p>
-        This Smart Widget works without context, but can optionally receive it via
-        <code>context:update</code>.
+        This Smart Widget works without context, but receives it via
+        <code>widget:init</code> and optionally <code>context:repoUpdate</code>.
       </p>
-      <p class="hint">If you are testing locally, your host must post a <code>type: "event"</code> message.</p>
     </section>
   {/if}
 
@@ -180,10 +220,13 @@
     </div>
 
     <div class="action-group">
-      <h3>Request a toast (ui:toast)</h3>
+      <h3>UI Actions</h3>
       <div class="button-group">
         <button onclick={showToast} disabled={!bridge}>
-          Show Toast
+          Show Toast (ui:toast)
+        </button>
+        <button onclick={requestResize} disabled={!bridge}>
+          Resize to 400px (ui:resize)
         </button>
       </div>
     </div>
@@ -362,10 +405,5 @@
   .waiting p {
     margin: 0.5rem 0;
     color: #666;
-  }
-
-  .hint {
-    font-size: 0.9rem;
-    color: #999;
   }
 </style>

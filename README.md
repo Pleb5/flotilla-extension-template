@@ -33,6 +33,16 @@ Flotilla discovers and renders widgets based on these events and enforces privil
 
 ## Quick Start
 
+### Bootstrap a new project (recommended)
+
+```bash
+npx create-flotilla-widget my-widget
+```
+
+This scaffolds a fresh copy with your project name, description, and dependencies pre-installed.
+
+### Or clone and install manually
+
 ### 1) Install
 
 ```bash

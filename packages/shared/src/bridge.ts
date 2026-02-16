@@ -32,6 +32,8 @@ function makeId(): string {
 }
 
 export class WidgetBridge {
+  /** Whether `signalReady()` has been called. */
+  private _readySent = false;
   private targetWindow: Window;
   private targetOrigin: string;
   private validateOrigin?: (origin: string) => boolean;
@@ -40,6 +42,7 @@ export class WidgetBridge {
   private eventHandlers = new Map<string, Set<EventHandler>>();
   private requestHandlers = new Map<string, RequestHandler>();
   private listener: ((event: MessageEvent) => void) | null = null;
+  private subscriptions = new Set<string>();
 
   constructor(options: WidgetBridgeOptions = {}) {
     const targetWindow = options.targetWindow ?? window.parent;
@@ -151,9 +154,87 @@ export class WidgetBridge {
   }
 
   /**
+   * Signal to the host that this extension has finished initializing.
+   * The host waits for this (with a 5s fallback) before sending `widget:mounted`.
+   * Call this ONCE after your initial setup is complete.
+   */
+  signalReady(): void {
+    if (this._readySent) return;
+    this._readySent = true;
+    const msg: WidgetWireMessage = {
+      type: 'event',
+      action: 'widget:ready',
+      payload: { timestamp: Date.now() },
+    };
+    try {
+      this.targetWindow.postMessage(msg, this.targetOrigin);
+    } catch {
+      // Ignore — host may not be listening yet
+    }
+  }
+
+  /**
+   * Open a persistent Nostr subscription through the host bridge.
+   * Returns a handle with an unsubscribe function and the subscription ID.
+   *
+   * @example
+   * ```ts
+   * const sub = await bridge.subscribe({
+   *   subscriptionId: 'my-feed',
+   *   relays: ['wss://relay.example.com'],
+   *   filter: { kinds: [1], limit: 50 },
+   * });
+   *
+   * bridge.onEvent('nostr:event', ({ subscriptionId, event }) => {
+   *   if (subscriptionId === 'my-feed') console.log('New event:', event);
+   * });
+   *
+   * // Later:
+   * await sub.unsubscribe();
+   * ```
+   */
+  async subscribe(payload: {
+    subscriptionId: string;
+    relays: string[];
+    filter: Record<string, unknown>;
+  }): Promise<{ subscriptionId: string; unsubscribe: () => Promise<unknown> }> {
+    const res = await this.request('nostr:subscribe', payload);
+    
+    if (!res || typeof res !== 'object') {
+      throw new Error('Invalid response from nostr:subscribe');
+    }
+    
+    if ('error' in res) {
+      throw new Error((res as { error: string }).error);
+    }
+    
+    if (!('status' in res) || res.status !== 'ok') {
+      throw new Error('Subscription failed with unknown error');
+    }
+    
+    this.subscriptions.add(payload.subscriptionId);
+    
+    return {
+      subscriptionId: payload.subscriptionId,
+      unsubscribe: async () => {
+        this.subscriptions.delete(payload.subscriptionId);
+        return this.request('nostr:unsubscribe', { subscriptionId: payload.subscriptionId });
+      },
+    };
+  }
+
+  /**
    * Clean up event listeners and reject all pending requests.
    */
   destroy(): void {
+    // Unsubscribe from all active subscriptions
+    for (const subId of this.subscriptions) {
+      this.request('nostr:unsubscribe', { subscriptionId: subId }).catch(() => {
+        // Ignore errors during cleanup
+      });
+    }
+    this.subscriptions.clear();
+
     if (this.listener) {
       window.removeEventListener('message', this.listener);
       this.listener = null;

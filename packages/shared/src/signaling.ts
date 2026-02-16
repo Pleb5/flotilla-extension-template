@@ -14,7 +14,7 @@ import type { UnsignedEvent } from './types.js';
  * ```ts
  * const event = createEvent(1, 'Hello, Nostr!', [['p', recipientPubkey]]);
  * // Sign and publish via bridge
- * bridge.send({ type: 'publish', id: crypto.randomUUID(), event });
+ * await bridge.request('nostr:publish', event);
  * ```
  */
 export function createEvent(
@@ -36,7 +36,7 @@ export function createEvent(
  * @example
  * ```ts
  * const note = createTextNote('Hello, world!');
- * bridge.send({ type: 'publish', id: crypto.randomUUID(), event: note });
+ * await bridge.request('nostr:publish', note);
  * ```
  */
 export function createTextNote(content: string, tags: string[][] = []): UnsignedEvent {
@@ -96,7 +96,7 @@ export function createCustomEvent(
  * ```ts
  * const event = createTextNote('Hello!');
  * if (validateEvent(event, [1])) {
- *   bridge.send({ type: 'publish', id: crypto.randomUUID(), event });
+ *   await bridge.request('nostr:publish', event);
  * }
  * ```
  */
