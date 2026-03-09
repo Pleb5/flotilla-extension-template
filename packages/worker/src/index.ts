@@ -140,6 +140,7 @@ export function createWorkerBridge(
     console.log('Worker received message:', message);
 
     if (message.type === 'response') {
+      if (!message.id) return;
       const p = pending.get(message.id);
       if (!p) return;
 

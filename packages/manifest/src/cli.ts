@@ -23,6 +23,9 @@ interface CLIOptions {
   permissions: string;
   pubkey?: string;
   output: string;
+  slotType?: string;
+  slotLabel?: string;
+  slotPath?: string;
 }
 
 function parsePermissions(csv: string): WidgetPermission[] {
@@ -58,9 +61,17 @@ program
   )
   .option('--pubkey <hex>', 'Optional creator pubkey (hex) for widget.json (discovery tooling)')
   .option('--output <dir>', 'Output directory', 'dist/widget')
+  .option('--slot-type <type>', 'Slot type for integration (e.g., repo-tab)')
+  .option('--slot-label <label>', 'Slot display label')
+  .option('--slot-path <path>', 'Slot URL path segment')
   .action((options: CLIOptions) => {
     try {
       const permissions = parsePermissions(options.permissions);
+
+      // Build slot config if all slot options are provided
+      const slot = options.slotType && options.slotLabel && options.slotPath
+        ? { type: options.slotType, label: options.slotLabel, path: options.slotPath }
+        : undefined;
 
       const event = generateSmartWidgetEvent({
         identifier: options.identifier,
@@ -71,6 +82,7 @@ program
         appUrl: options.appUrl,
         buttonTitle: options.buttonTitle,
         permissions,
+        slot,
       });
 
       const eventJson = formatWidgetEvent(event);

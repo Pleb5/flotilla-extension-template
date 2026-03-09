@@ -3,6 +3,15 @@ import type { SmartWidgetNostrEvent, WidgetPermission } from '@flotilla/ext-shar
 
 export type SmartWidgetType = 'action' | 'tool';
 
+export interface SlotConfig {
+  /** Slot type (e.g., "repo-tab" for repository tab integration). */
+  type: string;
+  /** Display label for the slot. */
+  label: string;
+  /** URL path segment for routing. */
+  path: string;
+}
+
 export interface SmartWidgetEventOptions {
   /** The widget identifier (maps to the `d` tag). If omitted, a stable identifier is derived. */
   identifier?: string;
@@ -27,6 +36,8 @@ export interface SmartWidgetEventOptions {
   };
   /** Override created_at timestamp (seconds). */
   createdAt?: number;
+  /** Slot configuration for repo-tab or other integration points. */
+  slot?: SlotConfig;
 }
 
 function deriveIdentifier(title: string, appUrl: string): string {
@@ -72,6 +83,11 @@ export function generateSmartWidgetEvent(options: SmartWidgetEventOptions): Smar
     if (permission && String(permission).trim()) {
       tags.push(['permission', String(permission).trim()]);
     }
+  }
+
+  // Add slot configuration for repo-tab integration
+  if (options.slot) {
+    tags.push(['slot', options.slot.type, options.slot.label, options.slot.path]);
   }
 
   return {

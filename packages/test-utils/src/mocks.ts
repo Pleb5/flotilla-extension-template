@@ -159,6 +159,7 @@ export class MockWidgetBridge {
    */
   emitFromHost(msg: WidgetWireMessage): void {
     if (msg.type === 'response') {
+      if (!msg.id) return;
       const pending = this.pending.get(msg.id);
       if (!pending) return;
 
