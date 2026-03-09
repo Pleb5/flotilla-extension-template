@@ -19,17 +19,19 @@ A Flotilla Smart Widget is represented on Nostr as a **kind `30033` addressable 
 - Display metadata (`image`, `icon`)
 - A launch button that points to your hosted iframe app (`button ... app ...`)
 - Declared permissions (`permission` tags)
+- Declared Nostr event kinds (`nostrKinds` tags)
 
 Flotilla discovers and renders widgets based on these events and enforces privileged actions based on declared permissions.
 
 ## Template Features
 
 - Svelte 5 iframe app example (Smart Widget "tool" pattern)
-- Framework-agnostic shared bridge package
+- Framework-agnostic shared bridge package with `signalReady()` and `subscribe()` helpers
 - TypeScript strict mode
 - Monorepo via pnpm workspaces
 - Unit tests (Vitest) + E2E tests (Playwright)
-- Smart Widget generator CLI (outputs kind `30033` event + optional `/.well-known/widget.json`)
+- Smart Widget generator CLI (outputs kind `30033` event with `nostrKinds` + optional `/.well-known/widget.json`)
+- Dual-protocol: works with Flotilla bridge and Smart Widget Handler hosts
 
 ## Quick Start
 
@@ -78,12 +80,15 @@ pnpm manifest:generate \
   --icon 'https://cdn.example.com/my-widget/icon.png' \
   --image 'https://cdn.example.com/my-widget/preview.png' \
   --button-title 'Open' \
-  --permissions 'nostr:publish,ui:toast'
+  --permissions 'nostr:publish,nostr:query,nostr:subscribe,ui:toast' \
+  --nostr-kinds '30301,30302'
 ```
 
 Notes:
 - `--identifier` is optional; if omitted it will be derived.
 - `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
+- `--nostr-kinds` declares which Nostr event kinds your widget needs.
+- `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions.
 
 ## Bridge Protocol (Action-Based)
 
@@ -159,7 +164,16 @@ Smart Widgets can declare permissions using `permission` tags (one per permissio
 - `nostr:publish`
 - `ui:toast`
 
-Flotilla may treat some actions as privileged (for example `nostr:*` and `storage:*`) and enforce them based on the widget’s declared permissions.
+Privileged actions (`nostr:*`, `storage:*`) require explicit permission tags. `ui:*` actions are rate-limited but don't require explicit permission.
+
+Additionally, declare which event kinds your widget needs via `nostrKinds` tags:
+
+```json
+["nostrKinds", "30301"]
+["nostrKinds", "30302"]
+```
+
+Only declared kinds (plus profiles and relay lists) can be queried/subscribed.
 
 ## Project Structure (Monorepo)
 
@@ -182,8 +196,8 @@ flotilla-extension-template/
 
 Shared, framework-agnostic code:
 
-- `WidgetBridge`: typed action-based postMessage bridge compatible with Flotilla
-- Smart Widget message/types: `WidgetWireMessage`, `WidgetActionMap`, `WidgetContext`
+- `WidgetBridge`: typed action-based postMessage bridge with `signalReady()` and `subscribe()` helpers
+- Smart Widget types: `WidgetWireMessage`, `WidgetActionMap`, `WidgetInitPayload`, `RepoContext`
 - Nostr helpers: `createEvent`, `validateEvent`, and related signaling utilities
 
 ### `@flotilla/ext-iframe`

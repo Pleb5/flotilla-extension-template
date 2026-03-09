@@ -6,141 +6,171 @@ Technical architecture of Flotilla Smart Widgets.
 
 ## System Architecture
 
-Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable events**. Flotilla discovers these events, renders them into the UI, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host using an **action-based postMessage protocol**.
+Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable events**. Flotilla discovers these events via persistent relay subscriptions, renders them into the UI, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host using an **action-based postMessage protocol**.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         Nostr Network                         │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  Relays (wss://relay.damus.io, etc.)                   │ │
-│  │  - Store and forward kind 30033 events                 │ │
-│  │  - Distribute to subscribers                           │ │
-│  └────────────────────────────────────────────────────────┘ │
+│                         Nostr Network                        │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Relays (wss://relay.damus.io, etc.)                   │  │
+│  │  - Store and forward kind 30033 events                 │  │
+│  │  - Persistent subscriptions (not one-shot queries)     │  │
+│  │  - New/updated widgets appear automatically            │  │
+│  └────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                            ▲  │
-                           │  │ WebSocket
+                           │  │ WebSocket (via welshman)
                            │  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Flotilla Host Application                  │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │                Smart Widget Registry                     │ │
-│  │  - Discovers kind 30033 events                           │ │
-│  │  - Parses tags (d, l, icon, image, button, permission)   │ │
-│  │  - Chooses render strategy (basic/action/tool)           │ │
-│  └────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────┐ │
-│                 Host Widget Bridge (postMessage)            │
-│  │  - Enforces privileged actions via permissions           │ │
-│  │  - Performs host-side capabilities (publish, storage)    │ │
-│  │  - Routes request/response/event messages                │ │
-│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │           Discovery Service (discovery.ts)              │  │
+│  │  - Persistent subscriptions for kind 31990 + 30033     │  │
+│  │  - Reactive Svelte stores for discovered extensions    │  │
+│  │  - Auto-update detection for installed extensions      │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │           Extension Registry (registry.ts)              │  │
+│  │  - Lifecycle management (load locking, readiness)      │  │
+│  │  - Unified runtime for all extension types             │  │
+│  │  - Error tracking per extension                         │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │         Host Widget Bridge (bridge.ts)                  │  │
+│  │  - Enforces permissions + nostrKinds                   │  │
+│  │  - Routes Nostr operations through welshman            │  │
+│  │  - Manages per-extension subscriptions (max 10)        │  │
+│  │  - Rate limits ui:* actions                            │  │
+│  │  - 30s request timeout, reject on detach               │  │
+│  │  - Dual-protocol: Flotilla + SW Handler compat         │  │
+│  └────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                            ▲  │
-                           │  │ postMessage (action protocol)
+                           │  │ postMessage
                            │  ▼
 ┌─────────────────────────────────────────────────────────────┐
 │            Sandboxed iframe (Widget UI, Svelte)              │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │             WidgetBridge (@flotilla/ext-shared)          │ │
-│  │  - request(action, payload) -> Promise(responsePayload) │ │
-│  │  - onEvent(action, handler)                             │ │
-│  │  - onRequest(action, handler)  (tool widgets)           │ │
-│  └────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │                     Widget Logic                         │ │
-│  │  - UI interactions                                       │ │
-│  │  - Requests host actions (nostr:publish, ui:toast, ...)   │ │
-│  │  - Optional: handles host context events                 │ │
-│  └────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │             WidgetBridge (@flotilla/ext-shared)          │  │
+│  │  - request(action, payload) → Promise<response>        │  │
+│  │  - onEvent(action, handler)                             │  │
+│  │  - signalReady()                                        │  │
+│  │  - subscribe(opts) → { unsubscribe() }                  │  │
+│  │  - nostr-tools dependency only (no welshman)            │  │
+│  └────────────────────────────────────────────────────────┘  │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │                     Widget Logic                         │  │
+│  │  - UI interactions                                       │  │
+│  │  - Requests host actions (nostr:publish, nostr:query)    │  │
+│  │  - Opens subscriptions (nostr:subscribe)                │  │
+│  │  - Handles lifecycle events                              │  │
+│  └────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Smart Widget Model
+### Dependency Boundary
 
-### Widget Types
+```
+Extensions (iframes)          Host Bridge            Welshman Relay Pool
+─────────────────────   ───────────────────────   ─────────────────────
+nostr-tools ONLY          welshman integration       Shared connections
+signalReady()             widget:init / ready        Auth, NIP-42
+request('nostr:query')    → load() via welshman      Connection pooling
+subscribe()               → request() via welshman
+request('nostr:publish')  → publishThunk()
+```
 
-Flotilla supports multiple widget types. This template demonstrates an **iframe-based `tool` widget** (bidirectional).
+Extensions **never** import or depend on welshman. The postMessage bridge is the boundary.
+
+## Widget Types
 
 - **basic**: Host-rendered (no iframe). Not covered by this template.
-- **action**: Iframe-based, typically one-way UX (host may not call back for work).
+- **action**: Iframe-based, one-way UX.
 - **tool**: Iframe-based, bidirectional (host and widget can both initiate work).
 
-### Smart Widget Event (kind 30033)
-
-A Smart Widget is described by a kind `30033` Nostr event. Key tags (as expected by Flotilla):
-
-- `d`: unique identifier (addressable key)
-- `l`: widget type label (e.g., `tool` or `action`)
-- `icon`, `image`: display metadata
-- `button`: launch button definition, including `app` URL for iframe widgets
-- `permission`: declared permissions for privileged actions
-
-Example tag set:
-
-```json
-{
-  "kind": 30033,
-  "content": "My Smart Widget",
-  "tags": [
-    ["d", "my-smart-widget"],
-    ["l", "tool"],
-    ["icon", "https://cdn.example.com/my-widget/icon.png"],
-    ["image", "https://cdn.example.com/my-widget/preview.png"],
-    ["button", "Open", "app", "https://cdn.example.com/my-widget/index.html"],
-    ["permission", "nostr:publish"],
-    ["permission", "ui:toast"]
-  ],
-  "created_at": 1700000000
-}
-```
+This template demonstrates a **`tool` widget** (bidirectional).
 
 ## Lifecycle
 
 ```
-1. Discovery (query kind 30033)
+1. Discovery (persistent subscriptions for kind 30033)
    ↓
-2. Parse + validate widget event (tags, urls, type)
+2. Parse + validate (tags, urls, type, nostrKinds)
    ↓
 3. Permission review (declared permission tags)
    ↓
 4. Iframe creation (sandboxed, allow-list capabilities)
    ↓
-5. Widget active (postMessage request/response/event)
+5. Bridge attachment + widget:init sent
    ↓
-6. Cleanup (remove iframe, listeners, pending requests)
+6. Readiness handshake:
+   - Widget calls bridge.signalReady()
+   - Or sends {kind: "app-loaded"} (SW Handler compat)
+   - Or 5s timeout fallback
+   ↓
+7. widget:mounted sent → Widget fully active
+   ↓
+8. Active:
+   - Bridge processes request/response/event messages
+   - Subscriptions tracked per-extension (max 10)
+   - Rate limiting on ui:* actions
+   ↓
+9. Unloading:
+   - All subscriptions aborted
+   - widget:unmounting sent
+   - Bridge detached (pending promises rejected)
+   - Iframe removed
 ```
 
-Notes:
-- There is no required "ready" handshake in the canonical Smart Widget protocol.
-- Widgets should be resilient: render UI and be usable even if host context is not provided.
-
-## Communication Flow (Action-Based Protocol)
+## Communication Flow
 
 ### Wire Protocol
 
-Smart Widgets communicate with Flotilla using these message shapes:
+```ts
+type WidgetWireMessage =
+  | { type: "request"; id: string; action: string; payload?: unknown }
+  | { type: "response"; id: string; action: string; payload?: unknown }
+  | { type: "event"; action: string; payload?: unknown }
+```
 
-- Widget -> Host **request**:
-  - `{ type: "request", id, action, payload }`
-- Host -> Widget **response**:
-  - `{ type: "response", id, action, payload }`
-- Host -> Widget **event**:
-  - `{ type: "event", action, payload }`
-
-### Example: Widget Requests a Publish
+### Example: Widget Publishes an Event
 
 ```
 Widget iframe                         Host
     │                                  │
-    │ request nostr:publish             │
+    │ request nostr:publish            │
     ├─────────────────────────────────>│
     │                                  │
-    │                    validate permission + payload
+    │               validate permission + nostrKinds
+    │               sign via host signer
+    │               publish via welshman publishThunk
     │                                  │
-    │                    publish to relays (host capability)
-    │                                  │
-    │ response nostr:publish            │
+    │ response nostr:publish           │
     │<─────────────────────────────────┤
+```
+
+### Example: Real-time Subscription
+
+```
+Widget iframe                         Host
+    │                                  │
+    │ request nostr:subscribe          │
+    ├─────────────────────────────────>│
+    │                                  │
+    │               validate + open via welshman request()
+    │                                  │
+    │ response {status: "ok"}          │
+    │<─────────────────────────────────┤
+    │                                  │
+    │ event nostr:event {event}        │  ← real-time
+    │<─────────────────────────────────┤
+    │ event nostr:event {event}        │  ← real-time
+    │<─────────────────────────────────┤
+    │ event nostr:eose {relay}         │  ← stored events done
+    │<─────────────────────────────────┤
+    │                                  │
+    │ request nostr:unsubscribe        │
+    ├─────────────────────────────────>│
 ```
 
 ### Example: Host Sends Lifecycle Events
@@ -182,13 +212,14 @@ Widgets can also proactively fetch context using `context:getRepo` request actio
 
 Framework-agnostic, reusable building blocks:
 
-- `WidgetWireMessage`, `WidgetActionMap`, `WidgetContext`
-- `WidgetBridge`: action-based postMessage bridge for iframes
+- `WidgetWireMessage`, `WidgetActionMap` — full type definitions for all actions and events
+- `WidgetBridge` — action-based postMessage bridge with `signalReady()` and `subscribe()` helpers
+- `WidgetInitPayload`, `RepoContext` — lifecycle event types
 - Nostr helpers: `createEvent`, `validateEvent`, etc.
 
 ### Iframe App (`@flotilla/ext-iframe`)
 
-A Svelte 5 Smart Widget UI demonstrating a `tool` widget:
+Svelte 5 Smart Widget UI demonstrating a `tool` widget:
 
 - Calls host actions via `bridge.request(\"nostr:publish\", ...)`
 - Shows UI feedback via `bridge.request(\"ui:toast\", ...)`
@@ -199,41 +230,33 @@ A Svelte 5 Smart Widget UI demonstrating a `tool` widget:
 
 Smart Widget generator CLI:
 
-- Generates unsigned kind `30033` event JSON
-- Generates `widget.json` for optional `/.well-known/widget.json` hosting
-- Generates `PUBLISHING.md` with signing + publishing steps (including naddr hint when possible)
+- Generates unsigned kind `30033` event JSON with `nostrKinds` tags
+- Accepts `--nostr-kinds "30301,30302"` flag
+- Generates `widget.json` for optional `/.well-known/widget.json`
+- Generates `PUBLISHING.md` with signing + publishing steps
 
 ### Test Utilities (`@flotilla/test-utils`)
 
-Mocks for action-based request/response/event messaging to make unit tests predictable.
+Mocks for action-based request/response/event messaging.
 
 ### Worker (`@flotilla/ext-worker`) (Optional)
 
-Stubbed worker bridge aligned with the same action protocol (useful for future background tasks).
+Stubbed worker bridge aligned with the same action protocol.
 
 ## Security Architecture
 
 ### Sandboxing
 
-Widgets run in sandboxed iframes to isolate untrusted code:
+- Baseline: `sandbox="allow-scripts allow-same-origin"`
+- No access to parent DOM or user private keys
+- Additional capabilities (camera/microphone) must be explicitly granted
 
-- No access to the parent DOM
-- No access to user private keys (signing/publishing occurs in host)
-- Communication only via postMessage
+### Permission Enforcement
 
-Recommended sandbox baseline:
-
-- `sandbox=\"allow-scripts allow-same-origin\"`
-
-Additional capabilities (camera/microphone/screen share) must be explicitly granted by the host via iframe `allow=` and should correspond to explicit user intent.
-
-### Privileged Actions + Permissions
-
-Flotilla may treat some actions as privileged (for example `nostr:*` and `storage:*`) and enforce them based on the widget’s declared `permission` tags.
-
-- Widget declares: `permission` tags (e.g., `nostr:publish`)
-- Host enforces: checks action string against declared permissions
-- Widget should handle permission denial as a normal error case (display a toast, etc.)
+- **Privileged:** `nostr:*`, `storage:*` — require explicit `permission` tags
+- **Rate-limited:** `ui:*` — 10 actions / 5 seconds / extension
+- **nostrKinds:** queries/subscriptions only for declared kinds + universal (0, 10002)
+- **Unknown actions:** return `{error: "Unsupported action: \"...\""}` (not undefined)
 
 ### Message Validation
 
@@ -299,70 +322,15 @@ Static assets (index.html, JS, CSS)
     ↓
 Host on HTTPS (CDN)
     ↓
-Generate kind 30033 event + widget.json
+Generate kind 30033 event (with nostrKinds) + widget.json
     ↓
 Sign + publish kind 30033 to Nostr relays
 ```
-
-## Testing Architecture
-
-### Unit Tests (Vitest)
-
-- Bridge request/response correlation
-- Message parsing and schema validation (where applicable)
-- Nostr helper logic
-
-### E2E Tests (Playwright)
-
-- Load the built widget
-- Simulate host request/response
-- Assert UI updates and outgoing messages
-
-## Deployment Architecture
-
-```
-Developer                     CDN                       Nostr Network
-   │                           │                           │
-   │ build (pnpm build)        │                           │
-   │                           │                           │
-   │ upload widget UI          │                           │
-   ├──────────────────────────>│                           │
-   │                           │                           │
-   │ generate event.json       │                           │
-   │ pnpm manifest:generate    │                           │
-   │                           │                           │
-   │ sign + publish kind 30033 │                           │
-   ├──────────────────────────────────────────────────────>│
-   │                           │                           │
-User's Flotilla                │                           │
-   │ query kind 30033          │                           │
-   ├──────────────────────────────────────────────────────>│
-   │ receive widget event      │                           │
-   │<───────────────────────────────────────────────────────┤
-   │ load iframe from button/app URL                         │
-   ├──────────────────────────>│                           │
-   │                           │                           │
-   │ render widget UI in iframe │                           │
-```
-
-## Performance Considerations
-
-- Keep widget UI small and fast to load.
-- Avoid heavy dependencies.
-- Use host actions for privileged operations (publish, storage) rather than embedding sensitive logic.
-
-## Future Enhancements
-
-Potential improvements:
-
-- Standardize more host -> widget events (context, theme, route, selection, etc.)
-- Richer capability negotiation beyond action strings
-- Cross-widget messaging via host routing (not direct postMessage)
-- Optional integrity verification / content addressing for hosted widget HTML
 
 ## Resources
 
 - [Nostr NIP-33: Parameterized Replaceable Events](https://github.com/nostr-protocol/nips/blob/master/33.md)
 - [postMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
 - [iframe sandbox](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#attr-sandbox)
+- [smart-widget-handler](https://www.npmjs.com/package/smart-widget-handler)
 - [Svelte 5](https://svelte.dev)

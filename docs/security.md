@@ -8,7 +8,9 @@ Smart Widgets are represented on Nostr as **kind `30033` addressable events** an
 - Host → Widget **response**: `{ type: "response", id, action, payload }`
 - Host → Widget **event**: `{ type: "event", action, payload }`
 
-This document focuses on isolating untrusted widget code, validating messages, and enforcing permissions for privileged host capabilities.
+The host also supports the Smart Widget Handler protocol (`{kind, data}`) for cross-host compatibility.
+
+This document focuses on isolating untrusted widget code, validating messages, enforcing permissions, and managing subscriptions safely.
 
 ## Sandboxing
 
@@ -91,16 +93,20 @@ Widgets declare permissions via `permission` tags on the kind `30033` event:
   "kind": 30033,
   "tags": [
     ["permission", "nostr:publish"],
-    ["permission", "ui:toast"]
+    ["permission", "nostr:subscribe"],
+    ["permission", "ui:toast"],
+    ["nostrKinds", "30301"],
+    ["nostrKinds", "30302"]
   ]
 }
 ```
 
 ### Enforcing Permissions (Host)
 
-A common host policy is to treat these action namespaces as privileged:
-- privileged: `nostr:*`, `storage:*`
-- non-privileged (still validated/rate-limited as needed): `ui:*`
+Flotilla's permission policy:
+- **Privileged:** `nostr:*`, `storage:*` — require explicit `permission` tags
+- **Rate-limited:** `ui:*` — 10 actions / 5 seconds / extension
+- **nostrKinds:** queries and subscriptions restricted to declared kinds + universal (0, 10002)
 
 Example enforcement:
 
@@ -115,7 +121,7 @@ function isActionAllowed(action: string, declaredPermissions: string[]): boolean
 }
 ```
 
-Hosts may choose to be stricter (for example, requiring explicit permission tags for `ui:*` actions too). If you do, document it and ensure widgets handle denials gracefully.
+Additionally, `nostrKinds` enforcement means a widget can only query or subscribe to event kinds it has explicitly declared. The host has no hardcoded application-specific kinds.
 
 ### User Consent
 
@@ -176,7 +182,9 @@ function validateUnsignedEvent(event: UnsignedEvent, allowedKinds: number[]): vo
 
 ## Rate Limiting
 
-Rate limit expensive actions (especially privileged ones) per widget and/or per user.
+Flotilla rate-limits `ui:*` actions at 10 per 5 seconds per extension. Additionally, expensive actions like `nostr:publish` and `nostr:subscribe` should be rate-limited per widget.
+
+Subscription limits: max 10 concurrent subscriptions per extension. Excess requests are rejected.
 
 Example:
 
@@ -371,8 +379,11 @@ console.log("Widget payload:", sanitizeForLog(payload));
 For widget authors (before publishing):
 - [ ] All URLs in kind 30033 tags use HTTPS (`app`, `icon`, `image`)
 - [ ] Permissions are minimal (only what the widget actually needs)
+- [ ] `nostrKinds` declares only the event kinds actually used
 - [ ] No private keys or secrets in widget code
 - [ ] Outgoing publish payloads are reasonable (size, tags, kinds)
+- [ ] `signalReady()` called after initialization
+- [ ] Subscriptions cleaned up when no longer needed
 - [ ] CSP is configured (recommended)
 - [ ] Dependencies up to date (`pnpm audit`)
 - [ ] Tests passing
@@ -380,9 +391,13 @@ For widget authors (before publishing):
 For host integrators:
 - [ ] Iframe uses sandbox baseline (`allow-scripts allow-same-origin`) and only adds capabilities intentionally
 - [ ] postMessage validates `origin` and `source`
+- [ ] Dual-protocol detection (Flotilla bridge + SW Handler)
 - [ ] Strict action allow-list + payload validation per action
-- [ ] Privileged actions (`nostr:*`, `storage:*`) enforced via declared `permission` tags + user consent
-- [ ] Rate limiting for expensive actions
+- [ ] `nostrKinds` enforcement on all query/subscribe actions
+- [ ] Privileged actions (`nostr:*`, `storage:*`) enforced via declared `permission` tags
+- [ ] Rate limiting for `ui:*` and expensive actions
+- [ ] Per-extension subscription limits and cleanup on unload
+- [ ] Request timeout (30s) and reject-on-detach
 - [ ] Errors returned to widgets are generic (no sensitive details)
 
 ## Reporting Vulnerabilities

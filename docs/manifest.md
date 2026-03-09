@@ -21,12 +21,14 @@ A Smart Widget is represented by:
 - Display metadata (`icon`, `image`)
 - A launch button that includes an `app` URL (iframe entry point)
 - Zero or more `permission` tags (one per permission string)
+- Zero or more `nostrKinds` tags (one per Nostr event kind the widget needs)
 
 Flotilla uses this event to:
 - discover and list the widget
 - render metadata
 - create a sandboxed iframe pointed at the `button`/`app` URL
 - enforce privileged actions based on declared `permission` tags
+- restrict Nostr queries/subscriptions to declared `nostrKinds`
 
 ## Event Structure
 
@@ -50,7 +52,11 @@ Example:
     ["image", "https://cdn.example.com/my-widget/preview.png"],
     ["button", "Open", "app", "https://cdn.example.com/my-widget/index.html"],
     ["permission", "nostr:publish"],
-    ["permission", "ui:toast"]
+    ["permission", "nostr:query"],
+    ["permission", "nostr:subscribe"],
+    ["permission", "ui:toast"],
+    ["nostrKinds", "30301"],
+    ["nostrKinds", "30302"]
   ],
   "created_at": 1700000000
 }
@@ -112,8 +118,23 @@ Declare a permission string (one tag per permission).
   - `["permission", "ui:toast"]`
 
 Notes:
-- Flotilla may treat some actions as privileged (commonly `nostr:*`, `storage:*`) and enforce them based on declared permissions.
-- This template’s demo defaults to `nostr:publish` and `ui:toast`.
+- Privileged actions (`nostr:*`, `storage:*`) require explicit permission tags.
+- `ui:*` actions are rate-limited but don't require explicit permission.
+- Include `nostr:subscribe` if your widget uses real-time subscriptions.
+
+### Nostr Kinds
+
+#### `nostrKinds`
+
+Declare which Nostr event kinds the widget needs (one tag per kind).
+
+- **Example**:
+  - `["nostrKinds", "30301"]`
+  - `["nostrKinds", "30302"]`
+
+Notes:
+- Only declared kinds (plus universal kinds 0 and 10002) can be queried/subscribed.
+- Omitting `nostrKinds` limits to profiles (kind 0) and relay lists (kind 10002).
 
 ## Generating Smart Widget files (CLI)
 
@@ -133,13 +154,15 @@ pnpm manifest:generate \
   --icon "https://cdn.example.com/my-widget/icon.png" \
   --image "https://cdn.example.com/my-widget/preview.png" \
   --button-title "Open" \
-  --permissions "nostr:publish,ui:toast" \
+  --permissions "nostr:publish,nostr:query,nostr:subscribe,ui:toast" \
+  --nostr-kinds "30301,30302" \
   --output "dist/widget"
 ```
 
 Optional:
 - `--identifier "my-smart-widget"` (if omitted, derived from `--title`)
 - `--pubkey "<hex pubkey>"` (if provided, publishing instructions can include an `naddr` hint)
+- `--nostr-kinds "30301,30302"` (declares which Nostr event kinds the widget needs)
 
 ## Signing and Publishing (kind 30033)
 

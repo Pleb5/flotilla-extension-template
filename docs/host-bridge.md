@@ -6,15 +6,19 @@ Guide for Flotilla host developers integrating **Smart Widgets**.
 
 Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable events**. The host application discovers widget events, renders widget metadata, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host via an **action-based postMessage protocol**:
 
-- Widget -> Host **request**: `{ type: "request", id, action, payload }`
-- Host -> Widget **response**: `{ type: "response", id, action, payload }`
-- Host -> Widget **event**: `{ type: "event", action, payload }`
+- Widget → Host **request**: `{ type: "request", id, action, payload }`
+- Host → Widget **response**: `{ type: "response", id, action, payload }`
+- Host → Widget **event**: `{ type: "event", action, payload }`
+
+The host also supports the **Smart Widget Handler protocol** (`{kind, data}`) for compatibility with widgets built using the `smart-widget-handler` npm package.
 
 The host is responsible for:
 - creating a sandboxed iframe
 - validating message origins + shapes
 - enforcing permissions for privileged actions
-- executing host-only capabilities (publishing, storage, etc.)
+- executing host-only capabilities (publishing, storage, subscriptions)
+- routing Nostr operations through its relay infrastructure (welshman)
+- managing per-extension subscription lifecycle
 - correlating requests/responses by `id`
 
 ## Architecture
@@ -27,33 +31,38 @@ The host is responsible for:
 │  │  - Validates origin + schema  │  │
 │  │  - Correlates req/res by id   │  │
 │  │  - Enforces permissions       │  │
-│  │  - Executes host capabilities │  │
+│  │  - Enforces nostrKinds        │  │
+│  │  - Rate limits ui:* actions   │  │
+│  │  - Tracks subscriptions       │  │
+│  │  - 30s request timeout        │  │
+│  │  - Dual-protocol detection    │  │
 │  └──────────┬────────────────────┘  │
-│             │ postMessage            │
-└─────────────┼────────────────────────┘
+│             │                       │
+│  ┌──────────▼────────────────────┐  │
+│  │     Welshman Relay Pool       │  │
+│  │  - Shared connections         │  │
+│  │  - Auth (NIP-42)             │  │
+│  │  - Connection pooling         │  │
+│  └───────────────────────────────┘  │
+│             │ postMessage           │
+└─────────────┼───────────────────────┘
               │
-┌─────────────┼────────────────────────┐
-│  Sandboxed iframe (Smart Widget UI)  │
-│  ┌──────────▼────────────────────┐   │
-│  │   WidgetBridge (in iframe)     │   │
-│  │  - request(action,payload)     │   │
-│  │  - onEvent(action, handler)    │   │
-│  │  - onRequest(action, handler)  │   │
-│  └───────────────────────────────┘   │
-└──────────────────────────────────────┘
+┌─────────────┼───────────────────────┐
+│  Sandboxed iframe (Smart Widget UI) │
+│  ┌──────────▼────────────────────┐  │
+│  │   WidgetBridge (in iframe)    │  │
+│  │  - request(action, payload)   │  │
+│  │  - onEvent(action, handler)   │  │
+│  │  - signalReady()              │  │
+│  │  - subscribe()                │  │
+│  │  - nostr-tools only           │  │
+│  └───────────────────────────────┘  │
+└─────────────────────────────────────┘
 ```
 
+**Key dependency boundary:** Extensions depend on `nostr-tools` only. All relay operations are fulfilled by the host using welshman. Extensions never import welshman.
+
 ## Smart Widget Event (kind 30033)
-
-A Smart Widget is described by a kind `30033` event with tags the host parses:
-
-- `d`: widget identifier (addressable key)
-- `l`: widget type label (`action` or `tool`)
-- `icon`, `image`: display metadata
-- `button`: launch definition: `['button', '<label>', 'app', '<url>']`
-- `permission`: declared permissions (one per permission string)
-
-Example:
 
 ```json
 {
@@ -66,128 +75,90 @@ Example:
     ["image", "https://cdn.example.com/my-widget/preview.png"],
     ["button", "Open", "app", "https://cdn.example.com/my-widget/index.html"],
     ["permission", "nostr:publish"],
-    ["permission", "ui:toast"]
+    ["permission", "nostr:query"],
+    ["permission", "nostr:subscribe"],
+    ["permission", "ui:toast"],
+    ["nostrKinds", "30301"],
+    ["nostrKinds", "30302"]
   ],
   "created_at": 1700000000
 }
 ```
 
+### `nostrKinds` Tags
+
+Extensions declare which Nostr event kinds they need access to:
+
+```json
+["nostrKinds", "30301"]
+["nostrKinds", "30302"]
+```
+
+The host only allows queries/subscriptions for declared kinds plus universal read kinds (0 = profiles, 10002 = relay lists). The host has **no hardcoded application-specific kinds**.
+
 ## Loading a Smart Widget
 
-### 1) Discover the widget event (kind 30033)
+### 1) Discover via persistent subscriptions
+
+Discovery is subscription-based, not one-shot:
 
 ```ts
-import { SimplePool } from "nostr-tools/pool";
+import { load, request } from "@welshman/net"
 
-const pool = new SimplePool();
-const relays = ["wss://relay.damus.io", "wss://nos.lol"];
+// Historical events
+await load({
+  relays: SMART_WIDGET_RELAYS,
+  filters: [{ kinds: [30033] }],
+  onEvent: (event) => handleWidgetEvent(event),
+})
 
-const events = await pool.querySync(relays, {
-  kinds: [30033],
-  "#d": ["my-smart-widget"], // optional filter by identifier
-});
-
-const widgetEvent = events[0];
-if (!widgetEvent) throw new Error("Widget not found");
+// Real-time updates (stays open)
+const controller = new AbortController()
+request({
+  relays: SMART_WIDGET_RELAYS,
+  filters: [{ kinds: [30033] }],
+  signal: controller.signal,
+  onEvent: (event) => handleWidgetEvent(event),
+})
 ```
 
-### 2) Validate and parse required tags
-
-At minimum, ensure:
-- the event is kind `30033`
-- it has a `d` tag and `l` tag
-- it has a `button` tag with `app` URL
-- URLs are `https:` (recommended)
-
-Example parsing:
+### 2) Parse and validate
 
 ```ts
-type NostrEvent = {
-  kind: number;
-  content: string;
-  tags: string[][];
-  created_at: number;
-  pubkey: string;
-  id: string;
-  sig: string;
-};
-
-function getTagValue(tags: string[][], name: string): string | undefined {
-  return tags.find((t) => t[0] === name)?.[1];
-}
-
-function getPermissions(tags: string[][]): string[] {
-  return tags.filter((t) => t[0] === "permission").map((t) => t[1]).filter(Boolean);
-}
-
-function getButtonAppUrl(tags: string[][]): string | undefined {
-  const button = tags.find((t) => t[0] === "button");
-  if (!button) return undefined;
-
-  // Expected shape: ["button", "Open", "app", "https://..."]
-  const appTypeIdx = button.indexOf("app");
-  if (appTypeIdx === -1) return undefined;
-  return button[appTypeIdx + 1];
-}
-
-function assertHttpsUrl(url: string): void {
-  const parsed = new URL(url);
-  if (parsed.protocol !== "https:") throw new Error(`Non-HTTPS URL not allowed: ${url}`);
-}
-
 function parseWidgetEvent(ev: NostrEvent) {
-  if (ev.kind !== 30033) throw new Error("Not a Smart Widget event");
+  if (ev.kind !== 30033) throw new Error("Not a Smart Widget event")
 
-  const identifier = getTagValue(ev.tags, "d");
-  const widgetType = getTagValue(ev.tags, "l");
-  const appUrl = getButtonAppUrl(ev.tags);
+  const identifier = getTagValue(ev.tags, "d")
+  const widgetType = getTagValue(ev.tags, "l")
+  const appUrl = getButtonAppUrl(ev.tags)
+  const nostrKinds = ev.tags
+    .filter(t => t[0] === "nostrKinds")
+    .map(t => parseInt(t[1], 10))
+    .filter(n => !isNaN(n))
 
-  if (!identifier) throw new Error("Missing d tag");
-  if (widgetType !== "action" && widgetType !== "tool") throw new Error("Missing/invalid l tag");
-  if (!appUrl) throw new Error("Missing button/app URL");
-
-  assertHttpsUrl(appUrl);
+  if (!identifier) throw new Error("Missing d tag")
+  if (widgetType !== "action" && widgetType !== "tool") throw new Error("Invalid l tag")
+  if (!appUrl) throw new Error("Missing button/app URL")
 
   return {
-    identifier,
-    widgetType,
-    appUrl,
+    identifier, widgetType, appUrl, nostrKinds,
     permissions: getPermissions(ev.tags),
     title: ev.content,
-    iconUrl: getTagValue(ev.tags, "icon"),
-    imageUrl: getTagValue(ev.tags, "image"),
-  };
+  }
 }
 ```
 
-### 3) Create a sandboxed iframe
-
-Use a baseline sandbox and add capabilities only when needed.
+### 3) Create sandboxed iframe
 
 ```ts
-const iframe = document.createElement("iframe");
-iframe.src = parsed.appUrl;
-
-// Baseline sandbox for Smart Widgets.
-iframe.sandbox.add("allow-scripts");
-iframe.sandbox.add("allow-same-origin");
-
-// Optional: if you explicitly want to allow additional capabilities.
-// iframe.allow = "microphone; camera; display-capture";
-
-document.getElementById("extension-container")?.appendChild(iframe);
+const iframe = document.createElement("iframe")
+iframe.src = parsed.appUrl
+iframe.sandbox.add("allow-scripts")
+iframe.sandbox.add("allow-same-origin")
+container.appendChild(iframe)
 ```
 
-### 4) Create a host bridge (request/response/event)
-
-The host bridge:
-- listens for `message` events
-- validates `origin` and message shape
-- routes by `action`
-- enforces permissions for privileged actions
-- responds with `{ type: "response", id, action, payload }`
-
-#### Wire shapes
+### 4) Create host bridge with readiness handshake
 
 ```ts
 type WidgetWireMessage =
@@ -355,70 +326,83 @@ function onRepoChange(newRepo) {
 
 ## Handling Actions
 
-### `nostr:publish`
+### All Registered Actions
 
-The canonical privileged action is to publish a Nostr event. The widget sends an *unsigned* event; the host should validate, sign, and publish.
+| Action | Permission | Description |
+|--------|-----------|-------------|
+| `nostr:publish` | `nostr:publish` | Sign and publish via welshman |
+| `nostr:query` | `nostr:query` | One-shot relay query (EOSE-based + 15s timeout) |
+| `nostr:subscribe` | `nostr:subscribe` | Persistent subscription (max 10/extension) |
+| `nostr:unsubscribe` | — | Close subscription by ID |
+| `ui:toast` | — (rate limited) | Toast notification |
+| `ui:resize` | — (rate limited) | Iframe height change |
+| `storage:get` | `storage:get` | Read scoped storage |
+| `storage:set` | `storage:set` | Write scoped storage |
+| `storage:remove` | `storage:remove` | Remove from scoped storage |
+| `storage:keys` | `storage:keys` | List storage keys |
+| `context:getRepo` | — | Get repo context |
+
+### `nostr:subscribe` — Persistent Subscriptions
 
 ```ts
-import { SimplePool } from "nostr-tools/pool";
+async function handleSubscribe(payload, ext) {
+  const { subscriptionId, relays, filter } = payload
 
-const pool = new SimplePool();
-const relays = ["wss://relay.damus.io", "wss://nos.lol"];
+  // Validate kinds against declared nostrKinds
+  validateKinds(filter.kinds, ext.nostrKinds)
 
-async function handleNostrPublish(unsignedEvent: any) {
-  // 1) Validate schema, size, tags, timestamp, and allowed kinds.
-  // 2) Sign with host-controlled signer.
-  // 3) Publish to relays.
-  // 4) Return event id (or other confirmation payload).
+  const controller = new AbortController()
+  trackSubscription(ext.id, subscriptionId, controller)
 
-  // NOTE: signing is host-specific; shown as pseudocode:
-  // const signed = await signer.signEvent(unsignedEvent);
-  // await Promise.all(pool.publish(relays, signed));
-  // return { eventId: signed.id };
+  request({
+    relays: normalizedRelays,
+    filters: [validatedFilter],
+    signal: controller.signal,
+    onEvent: (event) => {
+      ext.bridge.post("nostr:event", { subscriptionId, event })
+    },
+    onEose: (relay) => {
+      ext.bridge.post("nostr:eose", { subscriptionId, relay })
+    },
+  })
 
-  return { eventId: "fake-event-id" };
+  return { status: "ok", subscriptionId }
 }
 ```
 
-### `ui:toast`
+### Unknown Actions
 
-The widget may request simple UI feedback from the host.
-
-```ts
-async function handleToast(payload: unknown) {
-  // payload typically looks like: { message: string, type?: "info"|"success"|"warning"|"error" }
-  console.log("ui:toast", payload);
-  return { ok: true };
-}
-```
+Unknown actions return `{error: "Unsupported action: \"...\""}` — not `undefined`.
 
 ## Security
 
 ### Origin + Source Validation
 
-Hosts should validate at least:
 - `ev.origin === widgetOrigin` derived from `button/app` URL
 - `ev.source === iframe.contentWindow` (recommended)
-- message shape: `{ type, action, id }`
+- Message shape: `{ type, action, id }`
 
 ### Permission Enforcement
 
-Enforce privileged actions by checking declared `permission` tags.
-
-A common policy is:
-- privileged: `nostr:*`, `storage:*`
-- non-privileged: `ui:*` (host may still choose to validate/rate-limit)
+- Privileged: `nostr:*`, `storage:*` — require explicit `permission` tags
+- Non-privileged: `ui:*` — rate-limited (10 actions / 5 seconds / extension)
+- `nostrKinds` enforcement: queries/subscriptions can only access declared kinds
 
 ### Rate Limiting
 
-For expensive actions like publish, apply rate limiting per widget (and possibly per user).
+Apply rate limits for `ui:*` actions and expensive operations like `nostr:publish`.
+
+### Request Timeout
+
+All bridge requests have a 30-second timeout. On bridge detach, pending promises are rejected.
 
 ### Never expose private keys to widgets
 
-Widgets must not have access to user secret keys. All signing must occur in the host application.
+All signing must occur in the host application. Extensions only send unsigned events.
 
 ## Resources
 
 - [Nostr NIP-33: Parameterized Replaceable Events](https://github.com/nostr-protocol/nips/blob/master/33.md)
 - [postMessage API](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage)
 - [iframe sandbox](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#attr-sandbox)
+- [smart-widget-handler](https://www.npmjs.com/package/smart-widget-handler)

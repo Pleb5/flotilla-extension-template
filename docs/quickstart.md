@@ -54,7 +54,8 @@ pnpm manifest:generate \
   --icon "https://cdn.example.com/my-widget/icon.png" \
   --image "https://cdn.example.com/my-widget/preview.png" \
   --button-title "Open" \
-  --permissions "nostr:publish,ui:toast" \
+  --permissions "nostr:publish,nostr:query,nostr:subscribe,ui:toast" \
+  --nostr-kinds "30301,30302" \
   --output "dist/widget"
 ```
 
@@ -62,14 +63,16 @@ Notes:
 - `--type` should be `tool` (bidirectional) or `action` (one-way UX).
 - `--identifier` is optional; if omitted it will be derived from `--title`.
 - `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
+- `--nostr-kinds` declares which Nostr event kinds your widget needs to query/subscribe to.
+- `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions.
 
 ## 5) Test the widget against a minimal host (local)
 
 Smart Widgets communicate using an **action-based postMessage protocol**:
 
-- Widget -> Host requests: `{ type: "request", id, action, payload }`
-- Host -> Widget responses: `{ type: "response", id, action, payload }`
-- Host -> Widget events: `{ type: "event", action, payload }`
+- Widget → Host requests: `{ type: "request", id, action, payload }`
+- Host → Widget responses: `{ type: "response", id, action, payload }`
+- Host → Widget events: `{ type: "event", action, payload }`
 
 Create `host-test.html` next to the repo root and open it in your browser:
 
@@ -80,7 +83,7 @@ Create `host-test.html` next to the repo root and open it in your browser:
     <meta charset="utf-8" />
     <title>Smart Widget Host Test</title>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
+      body { font-family: system-ui, -apple-system, sans-serif; margin: 16px; }
       iframe { width: 100%; height: 700px; border: 1px solid #ccc; border-radius: 8px; }
       pre { background: #f7f7f7; padding: 12px; border-radius: 8px; overflow: auto; }
     </style>
@@ -107,39 +110,34 @@ Create `host-test.html` next to the repo root and open it in your browser:
       };
 
       window.addEventListener("message", async (ev) => {
-        // In a real host, validate ev.origin + schema.
         const msg = ev.data;
-
         if (!msg || typeof msg !== "object") return;
 
+        // Handle Flotilla bridge protocol
         if (msg.type === "request") {
           log("[host] request:", msg.action, JSON.stringify(msg.payload));
 
           if (msg.action === "nostr:publish") {
-            // Demo: pretend publishing succeeded and return a fake event id.
-            iframe.contentWindow.postMessage(
-              {
-                type: "response",
-                id: msg.id,
-                action: msg.action,
-                payload: { status: "ok", result: { eventId: "fake-event-id" } }
-              },
-              "*"
-            );
+            iframe.contentWindow.postMessage({
+              type: "response", id: msg.id, action: msg.action,
+              payload: { status: "ok", result: { eventId: "fake-event-id" } }
+            }, "*");
             return;
           }
 
-          if (msg.action === "ui:toast") {
-            // Demo: host acknowledges toast.
-            iframe.contentWindow.postMessage(
-              {
-                type: "response",
-                id: msg.id,
-                action: msg.action,
-                payload: { status: "ok" }
-              },
-              "*"
-            );
+          if (msg.action === "nostr:query") {
+            iframe.contentWindow.postMessage({
+              type: "response", id: msg.id, action: msg.action,
+              payload: { events: [], status: "ok" }
+            }, "*");
+            return;
+          }
+
+          if (msg.action === "ui:toast" || msg.action === "ui:resize") {
+            iframe.contentWindow.postMessage({
+              type: "response", id: msg.id, action: msg.action,
+              payload: { status: "ok" }
+            }, "*");
             return;
           }
 
@@ -198,18 +196,53 @@ Create `host-test.html` next to the repo root and open it in your browser:
 
 ## 6) Customize
 
-### Update package names (optional)
-
-```bash
-# Example: replace @flotilla/ext with your own scope/name
-find . -type f -name "package.json" -exec sed -i '' 's/@flotilla\/ext/@my-org\/my-widget/g' {} +
-```
-
 ### Implement your widget logic
 
 - UI lives in `packages/iframe-app/src/App.svelte`
 - Bridge + types live in `packages/shared/src/`
 - Nostr event helpers live in `packages/shared/src/signaling.ts`
+
+### Key patterns
+
+```typescript
+import { WidgetBridge } from '@flotilla/ext-shared'
+
+const bridge = new WidgetBridge()
+
+// 1. Listen for initialization
+bridge.onEvent("widget:init", (payload) => {
+  console.log("Extension ID:", payload.extensionId)
+  console.log("User pubkey:", payload.pubkey)
+  console.log("Relays:", payload.relays)
+
+  if (payload.repoContext) {
+    console.log("Repo:", payload.repoContext.name)
+  }
+})
+
+// 2. Listen for repo context updates
+bridge.onEvent("context:repoUpdate", (ctx) => {
+  console.log("Repo updated:", ctx.name)
+})
+
+// 3. Signal readiness (triggers widget:mounted)
+bridge.signalReady()
+
+// 4. Make bridge requests
+const result = await bridge.request("nostr:publish", unsignedEvent)
+await bridge.request("ui:toast", { message: "Published!", type: "success" })
+
+// 5. Open real-time subscriptions
+const sub = bridge.subscribe({
+  subscriptionId: "my-feed",
+  relays: ["wss://relay.example.com"],
+  filter: { kinds: [30301] },
+})
+bridge.onEvent("nostr:event", ({ subscriptionId, event }) => { ... })
+
+// 6. Resize iframe
+await bridge.request("ui:resize", { height: 800 })
+```
 
 ## 7) Publish
 
