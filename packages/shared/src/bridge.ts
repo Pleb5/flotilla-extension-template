@@ -200,6 +200,7 @@ export class WidgetBridge {
     const msg = parsed.data as WidgetWireMessage;
 
     if (msg.type === 'response') {
+      if (!msg.id) return;
       const pending = this.pending.get(msg.id);
       if (!pending) return;
 

@@ -213,7 +213,43 @@ pnpm verify
 pnpm manifest:generate
 ```
 
-## Publishing (High Level)
+## Publishing
+
+### Quick Publish to Blossom
+
+The easiest way to publish your widget is using Blossom servers:
+
+```bash
+# Set your Nostr secret key
+export NOSTR_SK=your_secret_key_hex
+
+# Build, upload to Blossom, sign, and publish to relays
+pnpm widget:publish:blossom
+```
+
+This will:
+1. Build all packages
+2. Generate the manifest
+3. Upload `index.html` to Blossom (before signing)
+4. Update the event's app URL with the Blossom URL
+5. Sign the event with your key
+6. Publish to Nostr relays
+7. Upload to Blossom again for redundancy
+
+### Publish to GitHub Releases
+
+Alternatively, publish via GitHub releases:
+
+```bash
+export NOSTR_SK=your_secret_key_hex
+export GITHUB_REPO=owner/repo
+export GITHUB_TAG=v1.0.0
+export GITHUB_TOKEN=your_github_token
+
+pnpm widget:publish:github
+```
+
+### Manual Publishing (Advanced)
 
 1) Build the iframe app:
 ```bash
@@ -229,11 +265,20 @@ pnpm manifest:generate \
   --type tool \
   --title 'My Smart Widget' \
   --app-url 'https://cdn.example.com/my-widget/index.html' \
-  --icon 'https://cdn.example.com/my-widget/icon.png' \
-  --image 'https://cdn.example.com/my-widget/preview.png'
+  --icon 'Sparkles' \
+  --image 'https://cdn.example.com/my-widget/preview.png' \
+  --identifier 'my-widget' \
+  --permissions 'nostr:publish,ui:toast'
 ```
 
 4) Sign and publish the generated kind `30033` event using `nostr-tools` (see `dist/widget/PUBLISHING.md`).
+
+### Publishing Options
+
+- `widget:publish:dry-run` - Test without publishing
+- `widget:publish:blossom` - Publish to Blossom + Nostr relays
+- `widget:publish:github` - Publish to GitHub releases + Nostr relays
+- `widget:publish` - Manual publish (requires pre-hosted artifact)
 
 ## Documentation
 

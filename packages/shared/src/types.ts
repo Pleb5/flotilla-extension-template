@@ -85,6 +85,13 @@ export type NostrPublishRequest = UnsignedEvent;
 
 export type NostrPublishResponse = { status: 'ok'; result?: unknown } | BridgeError;
 
+export type NostrQueryRequest = {
+  relays: string[];
+  filter: Record<string, unknown>;
+};
+
+export type NostrQueryResponse = { status: 'ok'; events: NostrEvent[] } | BridgeError;
+
 /**
  * Action map used by the canonical Smart Widget starter kit.
  *
@@ -96,6 +103,11 @@ export interface WidgetActionMap {
   'nostr:publish': {
     req: NostrPublishRequest;
     res: NostrPublishResponse;
+  };
+
+  'nostr:query': {
+    req: NostrQueryRequest;
+    res: NostrQueryResponse;
   };
 
   'ui:toast': {
@@ -159,12 +171,19 @@ export type WidgetEventMessage<A extends WidgetEventAction = WidgetEventAction> 
 /**
  * Fallback wire message (for host/client extensions beyond WidgetActionMap).
  */
-export type WidgetUnknownMessage = {
-  type: 'request' | 'response' | 'event';
-  action: string;
-  payload?: unknown;
-  id?: string;
-};
+export type WidgetUnknownMessage =
+  | {
+      type: 'request' | 'response';
+      action: string;
+      payload?: unknown;
+      id: string;
+    }
+  | {
+      type: 'event';
+      action: string;
+      payload?: unknown;
+      id?: never;
+    };
 
 export type WidgetWireMessage =
   | WidgetRequestMessage
@@ -228,4 +247,4 @@ export const SmartWidgetNostrEventSchema = z.object({
  * Convenience type for permissions declared in widget tags.
  * Flotilla's host enforces these by comparing against requested actions.
  */
-export type WidgetPermission = 'nostr:publish' | 'ui:toast' | (string & {});
+export type WidgetPermission = 'nostr:publish' | 'nostr:query' | 'ui:toast' | (string & {});
