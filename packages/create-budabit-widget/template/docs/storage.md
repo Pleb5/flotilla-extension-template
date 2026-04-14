@@ -1,6 +1,6 @@
 # Storage API
 
-Documentation for the Flotilla Smart Widget storage actions, enabling widgets to persist data through the host.
+Documentation for the BudaBit Smart Widget storage actions, enabling widgets to persist data through the host.
 
 ## Overview
 

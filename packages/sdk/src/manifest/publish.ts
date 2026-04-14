@@ -259,7 +259,7 @@ async function publishWidget(options: PublishOptions): Promise<void> {
   console.log(`   Event ID: ${signedEvent.id}`);
   console.log(`   Pubkey: ${signedEvent.pubkey}`);
   console.log(`   Identifier (d): ${identifier}`);
-  console.log(`\n🔗 naddr (use this to install in Flotilla):`);
+  console.log(`\n🔗 naddr (use this to install in BudaBit):`);
   console.log(`   ${naddr}`);
   console.log(`\n📦 npub:`);
   console.log(`   ${nip19.npubEncode(signedEvent.pubkey)}`);

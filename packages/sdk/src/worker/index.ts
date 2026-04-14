@@ -13,7 +13,7 @@ interface PendingRequest {
 /**
  * Worker bridge for headless Smart Widget logic.
  *
- * This is intentionally a stub, but it is consistent with Flotilla's wire protocol:
+ * This is intentionally a stub, but it is consistent with BudaBit's wire protocol:
  *   { type: 'request' | 'response' | 'event', action: string, payload?: unknown, id?: string }
  *
  * Use cases:

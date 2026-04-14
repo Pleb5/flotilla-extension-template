@@ -1,8 +1,8 @@
 {
-  "name": "my-flotilla-widget",
+  "name": "my-budabit-widget",
   "version": "0.1.0",
   "private": true,
-  "description": "A Flotilla Smart Widget extension",
+  "description": "A BudaBit Smart Widget extension",
   "type": "module",
   "scripts": {
     "dev": "pnpm --filter @my-widget/iframe dev",

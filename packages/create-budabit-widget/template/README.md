@@ -1,4 +1,4 @@
-# My Flotilla Widget
+# My BudaBit Widget
 
 A [Budabit](https://budabit.com) Smart Widget extension.
 

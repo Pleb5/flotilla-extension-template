@@ -1,10 +1,10 @@
 # Slot System
 
-Documentation for the Flotilla Smart Widget slot system, which defines where widgets can be mounted in the host application.
+Documentation for the BudaBit Smart Widget slot system, which defines where widgets can be mounted in the host application.
 
 ## Overview
 
-Slots are designated areas in the Flotilla host UI where widgets can be rendered. Each slot has specific characteristics:
+Slots are designated areas in the BudaBit host UI where widgets can be rendered. Each slot has specific characteristics:
 
 - **Location** - Where in the UI the widget appears
 - **Size constraints** - Viewport dimensions available to the widget

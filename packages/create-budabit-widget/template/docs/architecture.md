@@ -1,12 +1,12 @@
 # Architecture Overview
 
-Technical architecture of Flotilla Smart Widgets.
+Technical architecture of BudaBit Smart Widgets.
 
-> **Note:** This document covers Smart Widget architecture specifically. Flotilla also supports NIP-89 Manifest Extensions (kind 31990), which share the same postMessage bridge protocol but differ in discovery and registration. For the full extension architecture covering both models, see the [Flotilla Extension Developer Guide](../../../docs/extensions/README.md).
+> **Note:** This document covers Smart Widget architecture specifically. BudaBit also supports NIP-89 Manifest Extensions (kind 31990), which share the same postMessage bridge protocol but differ in discovery and registration. For the full extension architecture covering both models, see the [BudaBit Extension Developer Guide](../../../docs/extensions/README.md).
 
 ## System Architecture
 
-Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable events**. Flotilla discovers these events via persistent relay subscriptions, renders them into the UI, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host using an **action-based postMessage protocol**.
+BudaBit Smart Widgets are represented on Nostr as **kind `30033` addressable events**. BudaBit discovers these events via persistent relay subscriptions, renders them into the UI, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host using an **action-based postMessage protocol**.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -22,7 +22,7 @@ Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable ev
                            │  │ WebSocket (via welshman)
                            │  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Flotilla Host Application                  │
+│                    BudaBit Host Application                  │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │           Discovery Service (discovery.ts)              │  │
 │  │  - Persistent subscriptions for kind 31990 + 30033     │  │
@@ -42,7 +42,7 @@ Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable ev
 │  │  - Manages per-extension subscriptions (max 10)        │  │
 │  │  - Rate limits ui:* actions                            │  │
 │  │  - 30s request timeout, reject on detach               │  │
-│  │  - Dual-protocol: Flotilla + SW Handler compat         │  │
+│  │  - Dual-protocol: BudaBit + SW Handler compat         │  │
 │  └────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                            ▲  │

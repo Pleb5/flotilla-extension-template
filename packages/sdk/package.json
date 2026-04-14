@@ -38,7 +38,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "keywords": [
-    "flotilla",
+    "budabit",
     "nostr",
     "smart-widget",
     "sdk",

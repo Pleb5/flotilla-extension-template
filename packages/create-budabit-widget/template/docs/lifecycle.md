@@ -1,6 +1,6 @@
 # Widget Lifecycle Events
 
-Documentation for lifecycle events that the Flotilla host sends to Smart Widgets during their lifecycle.
+Documentation for lifecycle events that the BudaBit host sends to Smart Widgets during their lifecycle.
 
 ## Overview
 
