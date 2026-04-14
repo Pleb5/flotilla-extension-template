@@ -1,0 +1,38 @@
+{
+  "name": "create-flotilla-widget",
+  "version": "0.1.0",
+  "description": "Scaffold a new Flotilla Smart Widget extension project",
+  "type": "module",
+  "bin": {
+    "create-flotilla-widget": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "template",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "keywords": [
+    "flotilla",
+    "nostr",
+    "smart-widget",
+    "scaffold",
+    "create",
+    "template"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

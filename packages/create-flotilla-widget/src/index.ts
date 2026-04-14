@@ -1,0 +1,111 @@
+#!/usr/bin/env node
+
+import { Command } from 'commander';
+import { existsSync, mkdirSync, cpSync, readFileSync, writeFileSync } from 'fs';
+import { resolve, join, basename } from 'path';
+import { fileURLToPath } from 'url';
+import { execSync } from 'child_process';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+const templateDir = resolve(__dirname, '..', 'template');
+
+interface ScaffoldOptions {
+  description?: string;
+  skipInstall?: boolean;
+}
+
+function toPackageName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function scaffold(projectName: string, options: ScaffoldOptions) {
+  const targetDir = resolve(process.cwd(), projectName);
+  const packageName = toPackageName(basename(projectName));
+
+  if (existsSync(targetDir)) {
+    console.error(`\n  Error: directory "${projectName}" already exists.\n`);
+    process.exit(1);
+  }
+
+  console.log(`\n  Creating Flotilla widget: ${packageName}`);
+  console.log(`  Target: ${targetDir}\n`);
+
+  // Copy template
+  mkdirSync(targetDir, { recursive: true });
+  cpSync(templateDir, targetDir, { recursive: true });
+
+  // Customize package.json files
+  const rootPkg = JSON.parse(readFileSync(join(targetDir, 'package.json'), 'utf-8'));
+  rootPkg.name = packageName;
+  rootPkg.description = options.description ?? `Flotilla Smart Widget: ${packageName}`;
+  rootPkg.version = '0.1.0';
+  writeFileSync(join(targetDir, 'package.json'), JSON.stringify(rootPkg, null, 2) + '\n');
+
+  // Update iframe-app package name
+  const iframePkgPath = join(targetDir, 'packages', 'iframe-app', 'package.json');
+  if (existsSync(iframePkgPath)) {
+    const iframePkg = JSON.parse(readFileSync(iframePkgPath, 'utf-8'));
+    iframePkg.name = `@${packageName}/iframe`;
+    writeFileSync(iframePkgPath, JSON.stringify(iframePkg, null, 2) + '\n');
+  }
+
+  // Initialize git
+  try {
+    execSync('git init', { cwd: targetDir, stdio: 'ignore' });
+    console.log('  ✓ Initialized git repository');
+  } catch {
+    // git not available, skip
+  }
+
+  // Install dependencies
+  if (!options.skipInstall) {
+    console.log('  ⏳ Installing dependencies...\n');
+    try {
+      execSync('pnpm install', { cwd: targetDir, stdio: 'inherit' });
+      console.log('\n  ✓ Dependencies installed');
+    } catch {
+      console.log('\n  ⚠ Failed to install dependencies. Run `pnpm install` manually.');
+    }
+  } else {
+    console.log('  ⊘ Skipping dependency installation (--skip-install)');
+  }
+
+  console.log(`
+  ✅ Done! Your Flotilla widget is ready.
+
+  Next steps:
+
+    cd ${projectName}
+    pnpm dev              # Start dev server
+    pnpm build            # Build for production
+    pnpm test             # Run tests
+
+  To generate a widget manifest:
+
+    pnpm flotilla-generate \\
+      --title '${packageName}' \\
+      --app-url 'https://your-cdn.com/${packageName}/index.html' \\
+      --icon 'https://your-cdn.com/${packageName}/icon.png' \\
+      --image 'https://your-cdn.com/${packageName}/preview.png'
+
+  See docs/ for architecture and integration guides.
+`);
+}
+
+const program = new Command();
+
+program
+  .name('create-flotilla-widget')
+  .description('Scaffold a new Flotilla Smart Widget extension project')
+  .argument('<project-name>', 'Name of the new widget project')
+  .option('-d, --description <text>', 'Project description')
+  .option('--skip-install', 'Skip running pnpm install')
+  .action((projectName: string, options: ScaffoldOptions) => {
+    scaffold(projectName, options);
+  });
+
+program.parse();
