@@ -6,7 +6,7 @@
     type UnsignedEvent,
     type WidgetInitPayload,
     type RepoContext,
-  } from 'flotilla-sdk';
+  } from 'budabit-sdk';
 
   // Bridge + host-provided context
   let bridge = $state<WidgetBridge | null>(null);

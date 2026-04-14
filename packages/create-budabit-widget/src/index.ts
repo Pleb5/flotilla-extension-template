@@ -12,6 +12,7 @@ const templateDir = resolve(__dirname, '..', 'template');
 interface ScaffoldOptions {
   description?: string;
   skipInstall?: boolean;
+  local?: boolean;
 }
 
 function toPackageName(name: string): string {
@@ -38,18 +39,33 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
   mkdirSync(targetDir, { recursive: true });
   cpSync(templateDir, targetDir, { recursive: true });
 
+  // Resolve SDK path for --local mode
+  const sdkDir = resolve(__dirname, '..', '..', 'sdk');
+  const sdkRef = options.local ? `file:${sdkDir}` : '^0.1.0';
+
+  if (options.local) {
+    console.log(`  Using local SDK: ${sdkDir}`);
+  }
+
   // Customize package.json files
   const rootPkg = JSON.parse(readFileSync(join(targetDir, 'package.json'), 'utf-8'));
   rootPkg.name = packageName;
   rootPkg.description = options.description ?? `Budabit Smart Widget: ${packageName}`;
   rootPkg.version = '0.1.0';
+  // Replace SDK version with local path if --local
+  if (rootPkg.devDependencies?.['budabit-sdk']) {
+    rootPkg.devDependencies['budabit-sdk'] = sdkRef;
+  }
   writeFileSync(join(targetDir, 'package.json'), JSON.stringify(rootPkg, null, 2) + '\n');
 
-  // Update iframe-app package name
+  // Update iframe-app package name + SDK ref
   const iframePkgPath = join(targetDir, 'packages', 'iframe-app', 'package.json');
   if (existsSync(iframePkgPath)) {
     const iframePkg = JSON.parse(readFileSync(iframePkgPath, 'utf-8'));
     iframePkg.name = `@${packageName}/iframe`;
+    if (iframePkg.dependencies?.['budabit-sdk']) {
+      iframePkg.dependencies['budabit-sdk'] = sdkRef;
+    }
     writeFileSync(iframePkgPath, JSON.stringify(iframePkg, null, 2) + '\n');
   }
 
@@ -104,6 +120,7 @@ program
   .argument('<project-name>', 'Name of the new widget project')
   .option('-d, --description <text>', 'Project description')
   .option('--skip-install', 'Skip running pnpm install')
+  .option('--local', 'Use local SDK via file: reference (for development)')
   .action((projectName: string, options: ScaffoldOptions) => {
     scaffold(projectName, options);
   });
