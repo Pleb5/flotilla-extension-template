@@ -38,6 +38,8 @@ export interface SmartWidgetEventOptions {
   createdAt?: number;
   /** Slot configuration for repo-tab or other integration points. */
   slot?: SlotConfig;
+  /** Nostr event kinds this widget queries/subscribes to (maps to `nostrKinds` tags). */
+  nostrKinds?: number[];
 }
 
 function deriveIdentifier(title: string, appUrl: string): string {
@@ -88,6 +90,11 @@ export function generateSmartWidgetEvent(options: SmartWidgetEventOptions): Smar
   // Add slot configuration for repo-tab integration
   if (options.slot) {
     tags.push(['slot', options.slot.type, options.slot.label, options.slot.path]);
+  }
+
+  // Add nostrKinds tags for declared event kinds
+  for (const kind of options.nostrKinds ?? []) {
+    tags.push(['nostrKinds', String(kind)]);
   }
 
   return {

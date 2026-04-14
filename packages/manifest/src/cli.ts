@@ -83,6 +83,8 @@ program
         ? { type: options.slotType, label: options.slotLabel, path: options.slotPath }
         : undefined;
 
+      const nostrKinds = parseNostrKinds(options.nostrKinds);
+
       const event = generateSmartWidgetEvent({
         identifier: options.identifier,
         title: options.title,
@@ -93,6 +95,7 @@ program
         buttonTitle: options.buttonTitle,
         permissions,
         slot,
+        nostrKinds,
       });
 
       const eventJson = formatWidgetEvent(event);
