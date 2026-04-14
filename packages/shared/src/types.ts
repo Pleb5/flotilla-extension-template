@@ -195,19 +195,10 @@ export type UiToastRequest = {
 };
 export type UiToastResponse = { status: 'ok' } | BridgeError;
 
-/**
- * Nostr publish request payload. This matches Flotilla's `nostr:publish` handler expectations.
- */
-export type NostrPublishRequest = UnsignedEvent;
+// --- ui:resize ---
 
-export type NostrPublishResponse = { status: 'ok'; result?: unknown } | BridgeError;
-
-export type NostrQueryRequest = {
-  relays: string[];
-  filter: Record<string, unknown>;
-};
-
-export type NostrQueryResponse = { status: 'ok'; events: NostrEvent[] } | BridgeError;
+export type UiResizeRequest = { height?: number; width?: number };
+export type UiResizeResponse = { status: 'ok' } | BridgeError;
 
 // ---------------------------------------------------------------------------
 // Action map (all supported bridge actions)
