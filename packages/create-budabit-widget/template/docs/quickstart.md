@@ -205,7 +205,7 @@ Create `host-test.html` next to the repo root and open it in your browser:
 ### Key patterns
 
 ```typescript
-import { WidgetBridge } from '@flotilla/ext-shared'
+import { WidgetBridge } from 'budabit-sdk'
 
 const bridge = new WidgetBridge()
 

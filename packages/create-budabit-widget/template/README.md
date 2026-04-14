@@ -1,6 +1,6 @@
 # My Flotilla Widget
 
-A [Flotilla](https://flotilla.social) Smart Widget extension.
+A [Budabit](https://budabit.com) Smart Widget extension.
 
 ## Development
 

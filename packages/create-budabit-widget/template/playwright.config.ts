@@ -18,7 +18,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm --filter @flotilla/ext-iframe dev',
+    command: 'pnpm --filter @budabit/iframe dev',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
   },

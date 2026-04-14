@@ -15,9 +15,9 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "clean": "pnpm -r clean && rm -rf node_modules",
-    "manifest:generate": "flotilla-generate --title 'My Widget' --type tool --app-url '${WIDGET_APP_URL:-http://localhost:5173}' --icon 'Sparkles' --image 'https://example.com/preview.png' --identifier 'my-widget' --permissions 'nostr:publish,nostr:query,nostr:subscribe,ui:toast'"
+    "manifest:generate": "budabit-generate --title 'My Widget' --type tool --app-url '${WIDGET_APP_URL:-http://localhost:5173}' --icon 'Sparkles' --image 'https://example.com/preview.png' --identifier 'my-widget' --permissions 'nostr:publish,nostr:query,nostr:subscribe,ui:toast'"
   },
-  "keywords": ["flotilla", "nostr", "smart-widget"],
+  "keywords": ["budabit", "nostr", "smart-widget"],
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^9.17.0",
@@ -25,7 +25,7 @@
     "@types/node": "^22.10.2",
     "@vitest/coverage-v8": "^2.1.8",
     "eslint": "^9.17.0",
-    "flotilla-sdk": "^0.1.0",
+    "budabit-sdk": "^0.1.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.18.1",

@@ -51,7 +51,7 @@ Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable ev
 ┌─────────────────────────────────────────────────────────────┐
 │            Sandboxed iframe (Widget UI, Svelte)              │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │             WidgetBridge (@flotilla/ext-shared)          │  │
+│  │             WidgetBridge (budabit-sdk)          │  │
 │  │  - request(action, payload) → Promise<response>        │  │
 │  │  - onEvent(action, handler)                             │  │
 │  │  - signalReady()                                        │  │
@@ -208,7 +208,7 @@ Widgets can also proactively fetch context using `context:getRepo` request actio
 
 ## Package Architecture (Template)
 
-### Shared Package (`@flotilla/ext-shared`)
+### Shared Package (`budabit-sdk`)
 
 Framework-agnostic, reusable building blocks:
 
@@ -217,7 +217,7 @@ Framework-agnostic, reusable building blocks:
 - `WidgetInitPayload`, `RepoContext` — lifecycle event types
 - Nostr helpers: `createEvent`, `validateEvent`, etc.
 
-### Iframe App (`@flotilla/ext-iframe`)
+### Iframe App (`budabit-sdk (iframe app)`)
 
 Svelte 5 Smart Widget UI demonstrating a `tool` widget:
 
@@ -226,7 +226,7 @@ Svelte 5 Smart Widget UI demonstrating a `tool` widget:
 - Handles lifecycle events: `widget:init`, `widget:mounted`, `widget:unmounting`
 - Optionally handles `context:repoUpdate` for repository context changes
 
-### Manifest/Generator (`@flotilla/ext-manifest`)
+### Manifest/Generator (`budabit-sdk/manifest`)
 
 Smart Widget generator CLI:
 
@@ -235,11 +235,11 @@ Smart Widget generator CLI:
 - Generates `widget.json` for optional `/.well-known/widget.json`
 - Generates `PUBLISHING.md` with signing + publishing steps
 
-### Test Utilities (`@flotilla/test-utils`)
+### Test Utilities (`budabit-sdk/testing`)
 
 Mocks for action-based request/response/event messaging.
 
-### Worker (`@flotilla/ext-worker`) (Optional)
+### Worker (`budabit-sdk/worker`) (Optional)
 
 Stubbed worker bridge aligned with the same action protocol.
 

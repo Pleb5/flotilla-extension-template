@@ -50,7 +50,7 @@ interface StorageError {
 **Usage Example:**
 
 ```typescript
-import { createWidgetBridge } from '@flotilla/ext-shared';
+import { createWidgetBridge } from 'budabit-sdk';
 
 const bridge = createWidgetBridge();
 
@@ -287,7 +287,7 @@ export interface StorageError {
 }
 
 // Extend WidgetActionMap with storage actions
-declare module '@flotilla/ext-shared' {
+declare module 'budabit-sdk' {
   interface WidgetActionMap {
     'storage:get': {
       req: StorageGetRequest;
@@ -365,7 +365,7 @@ bridge.onEvent('widget:init', (payload) => {
 ## Complete Storage Example
 
 ```typescript
-import { createWidgetBridge } from '@flotilla/ext-shared';
+import { createWidgetBridge } from 'budabit-sdk';
 
 interface WidgetSettings {
   theme: 'light' | 'dark';

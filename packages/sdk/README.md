@@ -1,11 +1,11 @@
-# flotilla-sdk
+# budabit-sdk
 
-SDK for building [Flotilla](https://flotilla.social) Smart Widget extensions.
+SDK for building [Budabit](https://budabit.com) Smart Widget extensions.
 
 ## Install
 
 ```bash
-npm install flotilla-sdk
+npm install budabit-sdk
 ```
 
 ## Usage
@@ -13,7 +13,7 @@ npm install flotilla-sdk
 ### Bridge (iframe ↔ host communication)
 
 ```ts
-import { createWidgetBridge, type WidgetBridge } from 'flotilla-sdk';
+import { createWidgetBridge, type WidgetBridge } from 'budabit-sdk';
 
 const bridge = createWidgetBridge(window.parent, '*');
 
@@ -49,7 +49,7 @@ bridge.destroy();
 Generate a Smart Widget event (kind 30033):
 
 ```bash
-npx flotilla-generate \
+npx budabit-generate \
   --title 'My Widget' \
   --type tool \
   --app-url 'https://cdn.example.com/my-widget/index.html' \
@@ -62,7 +62,7 @@ npx flotilla-generate \
 ### Programmatic manifest generation
 
 ```ts
-import { generateSmartWidgetEvent } from 'flotilla-sdk/manifest';
+import { generateSmartWidgetEvent } from 'budabit-sdk/manifest';
 
 const event = generateSmartWidgetEvent({
   title: 'My Widget',
@@ -78,7 +78,7 @@ const event = generateSmartWidgetEvent({
 ### Testing
 
 ```ts
-import { createMockWidgetBridge } from 'flotilla-sdk/testing';
+import { createMockWidgetBridge } from 'budabit-sdk/testing';
 
 const mock = createMockWidgetBridge();
 
@@ -95,7 +95,7 @@ const result = await promise; // { status: 'ok' }
 ### Worker bridge
 
 ```ts
-import { createWorkerBridge } from 'flotilla-sdk/worker';
+import { createWorkerBridge } from 'budabit-sdk/worker';
 
 const bridge = createWorkerBridge((msg) => self.postMessage(msg));
 self.addEventListener('message', (e) => bridge.handleMessage(e.data));
@@ -105,15 +105,15 @@ self.addEventListener('message', (e) => bridge.handleMessage(e.data));
 
 | Import | Contents |
 |--------|----------|
-| `flotilla-sdk` | Types, WidgetBridge, signaling helpers |
-| `flotilla-sdk/manifest` | Event generator, CLI utilities |
-| `flotilla-sdk/testing` | MockWidgetBridge, test helpers |
-| `flotilla-sdk/worker` | Worker bridge |
+| `budabit-sdk` | Types, WidgetBridge, signaling helpers |
+| `budabit-sdk/manifest` | Event generator, CLI utilities |
+| `budabit-sdk/testing` | MockWidgetBridge, test helpers |
+| `budabit-sdk/worker` | Worker bridge |
 
 ## Scaffold a new widget
 
 ```bash
-npx create-flotilla-widget my-widget
+npx create-budabit-widget my-widget
 ```
 
 ## License

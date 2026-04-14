@@ -31,7 +31,7 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
     process.exit(1);
   }
 
-  console.log(`\n  Creating Flotilla widget: ${packageName}`);
+  console.log(`\n  Creating Budabit widget: ${packageName}`);
   console.log(`  Target: ${targetDir}\n`);
 
   // Copy template
@@ -41,7 +41,7 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
   // Customize package.json files
   const rootPkg = JSON.parse(readFileSync(join(targetDir, 'package.json'), 'utf-8'));
   rootPkg.name = packageName;
-  rootPkg.description = options.description ?? `Flotilla Smart Widget: ${packageName}`;
+  rootPkg.description = options.description ?? `Budabit Smart Widget: ${packageName}`;
   rootPkg.version = '0.1.0';
   writeFileSync(join(targetDir, 'package.json'), JSON.stringify(rootPkg, null, 2) + '\n');
 
@@ -75,7 +75,7 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
   }
 
   console.log(`
-  ✅ Done! Your Flotilla widget is ready.
+  ✅ Done! Your Budabit widget is ready.
 
   Next steps:
 
@@ -86,7 +86,7 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
 
   To generate a widget manifest:
 
-    pnpm flotilla-generate \\
+    pnpm budabit-generate \\
       --title '${packageName}' \\
       --app-url 'https://your-cdn.com/${packageName}/index.html' \\
       --icon 'https://your-cdn.com/${packageName}/icon.png' \\
@@ -99,8 +99,8 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
 const program = new Command();
 
 program
-  .name('create-flotilla-widget')
-  .description('Scaffold a new Flotilla Smart Widget extension project')
+  .name('create-budabit-widget')
+  .description('Scaffold a new Budabit Smart Widget extension project')
   .argument('<project-name>', 'Name of the new widget project')
   .option('-d, --description <text>', 'Project description')
   .option('--skip-install', 'Skip running pnpm install')
