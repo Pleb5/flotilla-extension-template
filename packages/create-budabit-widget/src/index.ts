@@ -63,6 +63,17 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
   if (rootPkg.devDependencies?.['budabit-sdk']) {
     rootPkg.devDependencies['budabit-sdk'] = sdkRef;
   }
+  // Rewrite scripts to use the actual package name
+  if (rootPkg.scripts) {
+    for (const [key, val] of Object.entries(rootPkg.scripts)) {
+      if (typeof val === 'string') {
+        rootPkg.scripts[key] = (val as string)
+          .replace(/@my-widget\/iframe/g, `@${packageName}/iframe`)
+          .replace(/--identifier 'my-widget'/g, `--identifier '${packageName}'`)
+          .replace(/--title 'My Widget'/g, `--title '${packageName}'`);
+      }
+    }
+  }
   writeFileSync(join(targetDir, 'package.json'), JSON.stringify(rootPkg, null, 2) + '\n');
 
   // Update iframe-app package name + SDK ref
@@ -74,6 +85,13 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
       iframePkg.dependencies['budabit-sdk'] = sdkRef;
     }
     writeFileSync(iframePkgPath, JSON.stringify(iframePkg, null, 2) + '\n');
+  }
+
+  // Customize README title
+  const readmePath = join(targetDir, 'README.md');
+  if (existsSync(readmePath)) {
+    const readme = readFileSync(readmePath, 'utf-8');
+    writeFileSync(readmePath, readme.replace('# My BudaBit Widget', `# ${packageName}`));
   }
 
   // Initialize git

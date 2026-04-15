@@ -110,7 +110,7 @@ This template’s shared package provides a typed `WidgetBridge` with:
 ### Example: publish a note + show a toast
 
 ```ts
-import { WidgetBridge, createEvent } from '@budabit/ext-shared';
+import { WidgetBridge, createEvent } from 'budabit-sdk';
 
 const bridge = new WidgetBridge();
 
@@ -192,15 +192,18 @@ budabit-extension-template/
 
 ## Package Overview
 
-### `@budabit/ext-shared`
+### `budabit-sdk`
 
-Shared, framework-agnostic code:
+The SDK provides everything you need to build a Smart Widget:
 
-- `WidgetBridge`: typed action-based postMessage bridge with `signalReady()` and `subscribe()` helpers
-- Smart Widget types: `WidgetWireMessage`, `WidgetActionMap`, `WidgetInitPayload`, `RepoContext`
-- Nostr helpers: `createEvent`, `validateEvent`, and related signaling utilities
+| Import | Contents |
+|--------|----------|
+| `budabit-sdk` | Types, `WidgetBridge`, `createWidgetBridge()`, signaling helpers (`createEvent`, `validateEvent`) |
+| `budabit-sdk/manifest` | Event generator, CLI utilities |
+| `budabit-sdk/testing` | `MockWidgetBridge`, test helpers |
+| `budabit-sdk/worker` | Worker bridge for headless extensions |
 
-### `@budabit/ext-iframe`
+### `iframe-app`
 
 Svelte 5 iframe app demonstrating a Smart Widget "tool":
 
@@ -208,22 +211,6 @@ Svelte 5 iframe app demonstrating a Smart Widget "tool":
 - Calls UI actions via `bridge.request('ui:toast', ...)`
 - Handles lifecycle events: `widget:init`, `widget:mounted`, `widget:unmounting`
 - Handles `context:repoUpdate` for repository context changes
-
-### `@budabit/ext-manifest`
-
-Smart Widget generator CLI:
-
-- Generates unsigned kind `30033` event JSON
-- Generates `widget.json` for optional `/.well-known/widget.json` hosting
-- Generates `PUBLISHING.md` with signing + publishing steps (including naddr hint when possible)
-
-### `@budabit/test-utils`
-
-Testing helpers and bridge mocks compatible with the action protocol.
-
-### `@budabit/ext-worker`
-
-Optional worker stub aligned with the same action-based protocol.
 
 ## Common Commands
 
