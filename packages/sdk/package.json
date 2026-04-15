@@ -1,6 +1,6 @@
 {
   "name": "budabit-sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SDK for building Budabit Smart Widget extensions — types, bridge, manifest CLI, and test utilities",
   "type": "module",
   "main": "./dist/index.js",
