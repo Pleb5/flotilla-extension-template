@@ -1,10 +1,10 @@
 # Host Bridge Integration
 
-Guide for Flotilla host developers integrating **Smart Widgets**.
+Guide for BudaBit host developers integrating **Smart Widgets**.
 
 ## Overview
 
-Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable events**. The host application discovers widget events, renders widget metadata, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host via an **action-based postMessage protocol**:
+BudaBit Smart Widgets are represented on Nostr as **kind `30033` addressable events**. The host application discovers widget events, renders widget metadata, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host via an **action-based postMessage protocol**:
 
 - Widget → Host **request**: `{ type: "request", id, action, payload }`
 - Host → Widget **response**: `{ type: "response", id, action, payload }`
@@ -25,7 +25,7 @@ The host is responsible for:
 
 ```
 ┌─────────────────────────────────────┐
-│         Flotilla Host               │
+│         BudaBit Host               │
 │  ┌───────────────────────────────┐  │
 │  │      Host Widget Bridge       │  │
 │  │  - Validates origin + schema  │  │

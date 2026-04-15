@@ -1,10 +1,10 @@
 # Quick Start Guide
 
-Get a Flotilla **Smart Widget** up and running in a few minutes.
+Get a BudaBit **Smart Widget** up and running in a few minutes.
 
 This template builds an **iframe-based widget** and generates an **unsigned Nostr kind `30033`** event you can sign + publish.
 
-> **Note:** This guide covers Smart Widgets specifically. Flotilla also supports NIP-89 Manifest Extensions (kind 31990). For guidance on choosing between extension types or building NIP-89 extensions, see the [Flotilla Extension Developer Guide](../../../docs/extensions/README.md).
+> **Note:** This guide covers Smart Widgets specifically. BudaBit also supports NIP-89 Manifest Extensions (kind 31990). For guidance on choosing between extension types or building NIP-89 extensions, see the [BudaBit Extension Developer Guide](../../../docs/extensions/README.md).
 
 ## Prerequisites
 
@@ -113,7 +113,7 @@ Create `host-test.html` next to the repo root and open it in your browser:
         const msg = ev.data;
         if (!msg || typeof msg !== "object") return;
 
-        // Handle Flotilla bridge protocol
+        // Handle BudaBit bridge protocol
         if (msg.type === "request") {
           log("[host] request:", msg.action, JSON.stringify(msg.payload));
 
@@ -205,7 +205,7 @@ Create `host-test.html` next to the repo root and open it in your browser:
 ### Key patterns
 
 ```typescript
-import { WidgetBridge } from '@flotilla/ext-shared'
+import { WidgetBridge } from '@budabit/ext-shared'
 
 const bridge = new WidgetBridge()
 

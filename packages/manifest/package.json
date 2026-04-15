@@ -1,5 +1,5 @@
 {
-  "name": "@flotilla/ext-manifest",
+  "name": "@budabit/ext-manifest",
   "version": "0.1.0",
   "type": "module",
   "bin": {
@@ -14,7 +14,7 @@
     "publish-widget": "node dist/publish.js"
   },
   "dependencies": {
-    "@flotilla/ext-shared": "workspace:*",
+    "@budabit/ext-shared": "workspace:*",
     "commander": "^12.1.0",
     "nostr-tools": "^2.16.0"
   },

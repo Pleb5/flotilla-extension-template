@@ -146,7 +146,7 @@
 
 <div class="container">
   <header>
-    <h1>Flotilla Smart Widget Template (Tool)</h1>
+    <h1>BudaBit Smart Widget Template (Tool)</h1>
     <p class="status" class:ready={!!initPayload}>{status}</p>
   </header>
 

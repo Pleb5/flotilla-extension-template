@@ -1,6 +1,6 @@
 # Security Best Practices
 
-Security guidelines for Flotilla **Smart Widget** developers and host integrators.
+Security guidelines for BudaBit **Smart Widget** developers and host integrators.
 
 Smart Widgets are represented on Nostr as **kind `30033` addressable events** and (for `action`/`tool` widgets) run as **sandboxed iframes** that communicate with the host via an **action-based postMessage protocol**:
 
@@ -103,7 +103,7 @@ Widgets declare permissions via `permission` tags on the kind `30033` event:
 
 ### Enforcing Permissions (Host)
 
-Flotilla's permission policy:
+BudaBit's permission policy:
 - **Privileged:** `nostr:*`, `storage:*` — require explicit `permission` tags
 - **Rate-limited:** `ui:*` — 10 actions / 5 seconds / extension
 - **nostrKinds:** queries and subscriptions restricted to declared kinds + universal (0, 10002)
@@ -182,7 +182,7 @@ function validateUnsignedEvent(event: UnsignedEvent, allowedKinds: number[]): vo
 
 ## Rate Limiting
 
-Flotilla rate-limits `ui:*` actions at 10 per 5 seconds per extension. Additionally, expensive actions like `nostr:publish` and `nostr:subscribe` should be rate-limited per widget.
+BudaBit rate-limits `ui:*` actions at 10 per 5 seconds per extension. Additionally, expensive actions like `nostr:publish` and `nostr:subscribe` should be rate-limited per widget.
 
 Subscription limits: max 10 concurrent subscriptions per extension. Excess requests are rejected.
 
@@ -391,7 +391,7 @@ For widget authors (before publishing):
 For host integrators:
 - [ ] Iframe uses sandbox baseline (`allow-scripts allow-same-origin`) and only adds capabilities intentionally
 - [ ] postMessage validates `origin` and `source`
-- [ ] Dual-protocol detection (Flotilla bridge + SW Handler)
+- [ ] Dual-protocol detection (BudaBit bridge + SW Handler)
 - [ ] Strict action allow-list + payload validation per action
 - [ ] `nostrKinds` enforcement on all query/subscribe actions
 - [ ] Privileged actions (`nostr:*`, `storage:*`) enforced via declared `permission` tags

@@ -1,4 +1,4 @@
-# Contributing to Flotilla Extension Template
+# Contributing to BudaBit Extension Template
 
 Thank you for your interest in contributing!
 

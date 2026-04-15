@@ -1,12 +1,12 @@
 # Architecture Overview
 
-Technical architecture of Flotilla Smart Widgets.
+Technical architecture of BudaBit Smart Widgets.
 
-> **Note:** This document covers Smart Widget architecture specifically. Flotilla also supports NIP-89 Manifest Extensions (kind 31990), which share the same postMessage bridge protocol but differ in discovery and registration. For the full extension architecture covering both models, see the [Flotilla Extension Developer Guide](../../../docs/extensions/README.md).
+> **Note:** This document covers Smart Widget architecture specifically. BudaBit also supports NIP-89 Manifest Extensions (kind 31990), which share the same postMessage bridge protocol but differ in discovery and registration. For the full extension architecture covering both models, see the [BudaBit Extension Developer Guide](../../../docs/extensions/README.md).
 
 ## System Architecture
 
-Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable events**. Flotilla discovers these events via persistent relay subscriptions, renders them into the UI, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host using an **action-based postMessage protocol**.
+BudaBit Smart Widgets are represented on Nostr as **kind `30033` addressable events**. BudaBit discovers these events via persistent relay subscriptions, renders them into the UI, and (for `action`/`tool` widgets) loads an **iframe UI** that communicates with the host using an **action-based postMessage protocol**.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -22,7 +22,7 @@ Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable ev
                            │  │ WebSocket (via welshman)
                            │  ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Flotilla Host Application                  │
+│                    BudaBit Host Application                  │
 │  ┌────────────────────────────────────────────────────────┐  │
 │  │           Discovery Service (discovery.ts)              │  │
 │  │  - Persistent subscriptions for kind 31990 + 30033     │  │
@@ -42,7 +42,7 @@ Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable ev
 │  │  - Manages per-extension subscriptions (max 10)        │  │
 │  │  - Rate limits ui:* actions                            │  │
 │  │  - 30s request timeout, reject on detach               │  │
-│  │  - Dual-protocol: Flotilla + SW Handler compat         │  │
+│  │  - Dual-protocol: BudaBit + SW Handler compat         │  │
 │  └────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
                            ▲  │
@@ -51,7 +51,7 @@ Flotilla Smart Widgets are represented on Nostr as **kind `30033` addressable ev
 ┌─────────────────────────────────────────────────────────────┐
 │            Sandboxed iframe (Widget UI, Svelte)              │
 │  ┌────────────────────────────────────────────────────────┐  │
-│  │             WidgetBridge (@flotilla/ext-shared)          │  │
+│  │             WidgetBridge (@budabit/ext-shared)          │  │
 │  │  - request(action, payload) → Promise<response>        │  │
 │  │  - onEvent(action, handler)                             │  │
 │  │  - signalReady()                                        │  │
@@ -208,7 +208,7 @@ Widgets can also proactively fetch context using `context:getRepo` request actio
 
 ## Package Architecture (Template)
 
-### Shared Package (`@flotilla/ext-shared`)
+### Shared Package (`@budabit/ext-shared`)
 
 Framework-agnostic, reusable building blocks:
 
@@ -217,7 +217,7 @@ Framework-agnostic, reusable building blocks:
 - `WidgetInitPayload`, `RepoContext` — lifecycle event types
 - Nostr helpers: `createEvent`, `validateEvent`, etc.
 
-### Iframe App (`@flotilla/ext-iframe`)
+### Iframe App (`@budabit/ext-iframe`)
 
 Svelte 5 Smart Widget UI demonstrating a `tool` widget:
 
@@ -226,7 +226,7 @@ Svelte 5 Smart Widget UI demonstrating a `tool` widget:
 - Handles lifecycle events: `widget:init`, `widget:mounted`, `widget:unmounting`
 - Optionally handles `context:repoUpdate` for repository context changes
 
-### Manifest/Generator (`@flotilla/ext-manifest`)
+### Manifest/Generator (`@budabit/ext-manifest`)
 
 Smart Widget generator CLI:
 
@@ -235,11 +235,11 @@ Smart Widget generator CLI:
 - Generates `widget.json` for optional `/.well-known/widget.json`
 - Generates `PUBLISHING.md` with signing + publishing steps
 
-### Test Utilities (`@flotilla/test-utils`)
+### Test Utilities (`@budabit/test-utils`)
 
 Mocks for action-based request/response/event messaging.
 
-### Worker (`@flotilla/ext-worker`) (Optional)
+### Worker (`@budabit/ext-worker`) (Optional)
 
 Stubbed worker bridge aligned with the same action protocol.
 

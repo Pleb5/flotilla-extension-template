@@ -1,5 +1,5 @@
 {
-  "name": "@flotilla/ext-shared",
+  "name": "@budabit/ext-shared",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",

@@ -254,7 +254,7 @@ export class WidgetBridge {
 
   private shouldAcceptMessage(event: MessageEvent): boolean {
     // When possible, require that the message source is our target window.
-    // (This aligns with Flotilla sending from iframe.contentWindow / parent window.)
+    // (This aligns with BudaBit sending from iframe.contentWindow / parent window.)
     if (event.source && event.source !== this.targetWindow) {
       return false;
     }

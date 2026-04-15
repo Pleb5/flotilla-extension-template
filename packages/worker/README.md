@@ -1,6 +1,6 @@
-# @flotilla/ext-worker
+# @budabit/ext-worker
 
-Headless worker bridge for Flotilla extensions.
+Headless worker bridge for BudaBit extensions.
 
 ## Purpose
 
@@ -16,7 +16,7 @@ This package provides a worker-based bridge for extensions that need to run back
 ### In a Web Worker
 
 ```typescript
-import { createWorkerBridge } from '@flotilla/ext-worker';
+import { createWorkerBridge } from '@budabit/ext-worker';
 
 const bridge = createWorkerBridge((message) => {
   self.postMessage(message);
@@ -57,5 +57,5 @@ This package is currently a stub. Uncomment and customize the worker code in `sr
 ## Building
 
 ```bash
-pnpm --filter @flotilla/ext-worker build
+pnpm --filter @budabit/ext-worker build
 ```

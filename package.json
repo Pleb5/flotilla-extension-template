@@ -1,11 +1,11 @@
 {
-  "name": "flotilla-extension-template",
+  "name": "budabit-extension-template",
   "version": "0.1.0",
   "private": true,
-  "description": "Reusable starter template for Flotilla Smart Widgets",
+  "description": "Reusable starter template for BudaBit Smart Widgets",
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @flotilla/ext-iframe dev",
+    "dev": "pnpm --filter @budabit/ext-iframe dev",
     "build": "pnpm -r build",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -21,16 +21,16 @@
     "format:check": "prettier --check .",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm e2e",
-    "manifest:generate": "pnpm --filter @flotilla/ext-manifest generate --title 'My Widget' --type tool --app-url '${WIDGET_APP_URL:-http://localhost:5173}' --icon 'Sparkles' --image 'https://example.com/preview.png' --identifier 'my-widget' --permissions 'nostr:publish,ui:toast'",
-    "manifest:publish": "pnpm --filter @flotilla/ext-manifest publish-widget",
+    "manifest:generate": "pnpm --filter @budabit/ext-manifest generate --title 'My Widget' --type tool --app-url '${WIDGET_APP_URL:-http://localhost:5173}' --icon 'Sparkles' --image 'https://example.com/preview.png' --identifier 'my-widget' --permissions 'nostr:publish,ui:toast'",
+    "manifest:publish": "pnpm --filter @budabit/ext-manifest publish-widget",
     "widget:build": "pnpm build && pnpm manifest:generate",
     "widget:publish": "pnpm widget:build && pnpm manifest:publish",
-    "widget:publish:dry-run": "pnpm widget:build && pnpm --filter @flotilla/ext-manifest publish-widget --dry-run",
-    "widget:publish:blossom": "pnpm widget:build && pnpm --filter @flotilla/ext-manifest publish-widget --upload-first --blossom https://blossom.primal.net --artifact ../iframe-app/dist/index.html",
-    "widget:publish:github": "pnpm widget:build && pnpm --filter @flotilla/ext-manifest publish-widget --upload-first --github-repo ${GITHUB_REPO} --github-tag ${GITHUB_TAG} --artifact ../iframe-app/dist/index.html"
+    "widget:publish:dry-run": "pnpm widget:build && pnpm --filter @budabit/ext-manifest publish-widget --dry-run",
+    "widget:publish:blossom": "pnpm widget:build && pnpm --filter @budabit/ext-manifest publish-widget --upload-first --blossom https://blossom.primal.net --artifact ../iframe-app/dist/index.html",
+    "widget:publish:github": "pnpm widget:build && pnpm --filter @budabit/ext-manifest publish-widget --upload-first --github-repo ${GITHUB_REPO} --github-tag ${GITHUB_TAG} --artifact ../iframe-app/dist/index.html"
   },
   "keywords": [
-    "flotilla",
+    "budabit",
     "nostr",
     "smart-widget",
     "template",

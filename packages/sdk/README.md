@@ -15,10 +15,10 @@ npm install budabit-sdk
 ```ts
 import { createWidgetBridge, type WidgetBridge } from 'budabit-sdk';
 
-const bridge = createWidgetBridge(window.parent, '*');
-
-// Signal readiness to host
-bridge.signalReady();
+const bridge = createWidgetBridge({
+  targetWindow: window.parent,
+  targetOrigin: '*',
+});
 
 // Publish a Nostr event
 const result = await bridge.request('nostr:publish', {
@@ -28,19 +28,12 @@ const result = await bridge.request('nostr:publish', {
   created_at: Math.floor(Date.now() / 1000),
 });
 
-// Subscribe to events
-const sub = await bridge.subscribe({
-  subscriptionId: 'my-feed',
-  relays: ['wss://relay.example.com'],
-  filter: { kinds: [1], limit: 50 },
-});
-
-bridge.onEvent('nostr:event', ({ subscriptionId, event }) => {
-  console.log('New event:', event);
+// Listen for context updates from host
+bridge.onEvent('context:update', (ctx) => {
+  console.log('Context:', ctx.contextId, ctx.userPubkey);
 });
 
 // Cleanup
-await sub.unsubscribe();
 bridge.destroy();
 ```
 

@@ -1,6 +1,6 @@
 # Storage API
 
-Documentation for the Flotilla Smart Widget storage actions, enabling widgets to persist data through the host.
+Documentation for the BudaBit Smart Widget storage actions, enabling widgets to persist data through the host.
 
 ## Overview
 
@@ -50,7 +50,7 @@ interface StorageError {
 **Usage Example:**
 
 ```typescript
-import { createWidgetBridge } from '@flotilla/ext-shared';
+import { createWidgetBridge } from '@budabit/ext-shared';
 
 const bridge = createWidgetBridge();
 
@@ -287,7 +287,7 @@ export interface StorageError {
 }
 
 // Extend WidgetActionMap with storage actions
-declare module '@flotilla/ext-shared' {
+declare module '@budabit/ext-shared' {
   interface WidgetActionMap {
     'storage:get': {
       req: StorageGetRequest;
@@ -365,7 +365,7 @@ bridge.onEvent('widget:init', (payload) => {
 ## Complete Storage Example
 
 ```typescript
-import { createWidgetBridge } from '@flotilla/ext-shared';
+import { createWidgetBridge } from '@budabit/ext-shared';
 
 interface WidgetSettings {
   theme: 'light' | 'dark';

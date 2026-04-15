@@ -1,5 +1,5 @@
 {
-  "name": "@flotilla/ext-worker",
+  "name": "@budabit/ext-worker",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,7 +10,7 @@
     "clean": "rm -rf dist *.tsbuildinfo"
   },
   "dependencies": {
-    "@flotilla/ext-shared": "workspace:*"
+    "@budabit/ext-shared": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

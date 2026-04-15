@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { WidgetWireMessage } from '@flotilla/ext-shared';
+import type { WidgetWireMessage } from '@budabit/ext-shared';
 
 /**
  * Mock iframe environment for testing bridge communication
@@ -91,7 +91,7 @@ interface PendingRequest {
 /**
  * Mock Smart Widget bridge for testing action-based request/response/event protocol.
  *
- * Matches Flotilla's wire messages:
+ * Matches BudaBit's wire messages:
  *   { type: 'request'|'response'|'event', action: string, payload?: any, id?: string }
  */
 export class MockWidgetBridge {

@@ -6,7 +6,7 @@
     type UnsignedEvent,
     type WidgetInitPayload,
     type RepoContext,
-  } from '@flotilla/ext-shared';
+  } from '@budabit/ext-shared';
 
   // Bridge + host-provided context
   let bridge = $state<WidgetBridge | null>(null);
@@ -146,7 +146,7 @@
 
 <div class="container">
   <header>
-    <h1>Flotilla Smart Widget Template (Tool)</h1>
+    <h1>BudaBit Smart Widget Template (Tool)</h1>
     <p class="status" class:ready={!!initPayload}>{status}</p>
   </header>
 

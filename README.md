@@ -1,18 +1,18 @@
-# Flotilla Smart Widget Template
+# BudaBit Smart Widget Template
 
-Reusable starter template for building Flotilla **Smart Widgets**.
+Reusable starter template for building BudaBit **Smart Widgets**.
 
-This template provides a production-ready foundation for creating **iframe-based Smart Widgets** that integrate with Flotilla using:
+This template provides a production-ready foundation for creating **iframe-based Smart Widgets** that integrate with BudaBit using:
 
 - A **Smart Widget event** published to Nostr (kind `30033`)
 - A **sandboxed iframe UI** (Svelte 5)
-- A **typed, action-based postMessage bridge** compatible with Flotilla
+- A **typed, action-based postMessage bridge** compatible with BudaBit
 
-> **Note:** This template is specifically for **Smart Widgets (kind 30033)**. Flotilla also supports **NIP-89 Manifest Extensions (kind 31990)**, which use a different discovery and registration model. For NIP-89 extensions, see the [Flotilla Extension Developer Guide](../../docs/extensions/README.md) which covers both extension types comprehensively.
+> **Note:** This template is specifically for **Smart Widgets (kind 30033)**. BudaBit also supports **NIP-89 Manifest Extensions (kind 31990)**, which use a different discovery and registration model. For NIP-89 extensions, see the [BudaBit Extension Developer Guide](../../docs/extensions/README.md) which covers both extension types comprehensively.
 
 ## What is a Smart Widget?
 
-A Flotilla Smart Widget is represented on Nostr as a **kind `30033` addressable event**. The event describes:
+A BudaBit Smart Widget is represented on Nostr as a **kind `30033` addressable event**. The event describes:
 
 - The widget identifier (`d` tag)
 - Widget type (`l` tag): `action` or `tool`
@@ -21,7 +21,7 @@ A Flotilla Smart Widget is represented on Nostr as a **kind `30033` addressable 
 - Declared permissions (`permission` tags)
 - Declared Nostr event kinds (`nostrKinds` tags)
 
-Flotilla discovers and renders widgets based on these events and enforces privileged actions based on declared permissions.
+BudaBit discovers and renders widgets based on these events and enforces privileged actions based on declared permissions.
 
 ## Template Features
 
@@ -31,14 +31,14 @@ Flotilla discovers and renders widgets based on these events and enforces privil
 - Monorepo via pnpm workspaces
 - Unit tests (Vitest) + E2E tests (Playwright)
 - Smart Widget generator CLI (outputs kind `30033` event with `nostrKinds` + optional `/.well-known/widget.json`)
-- Dual-protocol: works with Flotilla bridge and Smart Widget Handler hosts
+- Dual-protocol: works with BudaBit bridge and Smart Widget Handler hosts
 
 ## Quick Start
 
 ### Bootstrap a new project (recommended)
 
 ```bash
-npx create-flotilla-widget my-widget
+npx create-budabit-widget my-widget
 ```
 
 This scaffolds a fresh copy with your project name, description, and dependencies pre-installed.
@@ -92,7 +92,7 @@ Notes:
 
 ## Bridge Protocol (Action-Based)
 
-Flotilla uses an action-based postMessage protocol:
+BudaBit uses an action-based postMessage protocol:
 
 - Widget -> Host requests:
   - `{ type: 'request', id, action, payload }`
@@ -110,7 +110,7 @@ This template’s shared package provides a typed `WidgetBridge` with:
 ### Example: publish a note + show a toast
 
 ```ts
-import { WidgetBridge, createEvent } from '@flotilla/ext-shared';
+import { WidgetBridge, createEvent } from '@budabit/ext-shared';
 
 const bridge = new WidgetBridge();
 
@@ -178,7 +178,7 @@ Only declared kinds (plus profiles and relay lists) can be queried/subscribed.
 ## Project Structure (Monorepo)
 
 ```
-flotilla-extension-template/
+budabit-extension-template/
 ├── packages/
 │   ├── shared/          # Framework-agnostic bridge + types + signaling helpers
 │   ├── iframe-app/      # Svelte 5 iframe app (Smart Widget tool demo)
@@ -192,7 +192,7 @@ flotilla-extension-template/
 
 ## Package Overview
 
-### `@flotilla/ext-shared`
+### `@budabit/ext-shared`
 
 Shared, framework-agnostic code:
 
@@ -200,7 +200,7 @@ Shared, framework-agnostic code:
 - Smart Widget types: `WidgetWireMessage`, `WidgetActionMap`, `WidgetInitPayload`, `RepoContext`
 - Nostr helpers: `createEvent`, `validateEvent`, and related signaling utilities
 
-### `@flotilla/ext-iframe`
+### `@budabit/ext-iframe`
 
 Svelte 5 iframe app demonstrating a Smart Widget "tool":
 
@@ -209,7 +209,7 @@ Svelte 5 iframe app demonstrating a Smart Widget "tool":
 - Handles lifecycle events: `widget:init`, `widget:mounted`, `widget:unmounting`
 - Handles `context:repoUpdate` for repository context changes
 
-### `@flotilla/ext-manifest`
+### `@budabit/ext-manifest`
 
 Smart Widget generator CLI:
 
@@ -217,11 +217,11 @@ Smart Widget generator CLI:
 - Generates `widget.json` for optional `/.well-known/widget.json` hosting
 - Generates `PUBLISHING.md` with signing + publishing steps (including naddr hint when possible)
 
-### `@flotilla/test-utils`
+### `@budabit/test-utils`
 
 Testing helpers and bridge mocks compatible with the action protocol.
 
-### `@flotilla/ext-worker`
+### `@budabit/ext-worker`
 
 Optional worker stub aligned with the same action-based protocol.
 
@@ -280,7 +280,7 @@ pnpm widget:publish:github
 pnpm build
 ```
 
-2) Host the iframe HTML somewhere reachable by Flotilla (typically on HTTPS):
+2) Host the iframe HTML somewhere reachable by BudaBit (typically on HTTPS):
 - `packages/iframe-app/dist/index.html`
 
 3) Generate Smart Widget files:
@@ -316,16 +316,16 @@ Smart Widget docs live in `docs/` and cover:
 - [Security](./docs/security.md) - Security guidelines
 - [Quick Start](./docs/quickstart.md) - Getting started guide
 
-### Extension Types in Flotilla
+### Extension Types in BudaBit
 
-Flotilla supports two complementary extension models:
+BudaBit supports two complementary extension models:
 
 | Model | Event Kind | Discovery | Use Case |
 |-------|-----------|-----------|----------|
 | **Smart Widgets** (this template) | 30033 | YakiHonne relays | Rich, event-based widgets rendered inline or in iframes |
 | **NIP-89 Manifest Extensions** | 31990 | INDEXER_RELAYS or HTTPS URL | Full iframe apps with JSON manifests |
 
-For comprehensive documentation covering both models, including migration guidance and interoperability, see the [Flotilla Extension Developer Guide](../../docs/extensions/README.md).
+For comprehensive documentation covering both models, including migration guidance and interoperability, see the [BudaBit Extension Developer Guide](../../docs/extensions/README.md).
 
 ## License
 

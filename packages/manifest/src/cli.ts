@@ -10,7 +10,7 @@ import {
   generatePublishingInstructions,
   type SmartWidgetType,
 } from './generator.js';
-import type { WidgetPermission } from '@flotilla/ext-shared';
+import type { WidgetPermission } from '@budabit/ext-shared';
 
 interface CLIOptions {
   type: SmartWidgetType;
@@ -53,7 +53,7 @@ const program = new Command();
 
 program
   .name('generate-widget')
-  .description('Generate a Smart Widget (kind 30033) event + widget.json for Flotilla')
+  .description('Generate a Smart Widget (kind 30033) event + widget.json for BudaBit')
   .addOption(
     new Option('--type <tool|action>', 'Smart Widget type (iframe-based)').choices(['tool', 'action']).default('tool')
   )
@@ -132,7 +132,7 @@ program
       console.log('Next steps:');
       console.log('  1. Sign event.json with nostr-tools (see PUBLISHING.md)');
       console.log('  2. Publish to Smart Widget relays (e.g. wss://relay.yakihonne.com)');
-      console.log('  3. Install in Flotilla using the resulting naddr\n');
+      console.log('  3. Install in BudaBit using the resulting naddr\n');
     } catch (error) {
       console.error('❌ Error generating Smart Widget:', error);
       process.exit(1);

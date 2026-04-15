@@ -54,7 +54,7 @@ importers:
 
   packages/iframe-app:
     dependencies:
-      '@flotilla/ext-shared':
+      '@budabit/ext-shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -82,7 +82,7 @@ importers:
 
   packages/manifest:
     dependencies:
-      '@flotilla/ext-shared':
+      '@budabit/ext-shared':
         specifier: workspace:*
         version: link:../shared
       commander:
@@ -139,7 +139,7 @@ importers:
 
   packages/test-utils:
     dependencies:
-      '@flotilla/ext-shared':
+      '@budabit/ext-shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -155,7 +155,7 @@ importers:
 
   packages/worker:
     dependencies:
-      '@flotilla/ext-shared':
+      '@budabit/ext-shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:

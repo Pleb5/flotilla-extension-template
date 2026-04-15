@@ -1,6 +1,6 @@
 # Widget Lifecycle Events
 
-Documentation for lifecycle events that the Flotilla host sends to Smart Widgets during their lifecycle.
+Documentation for lifecycle events that the BudaBit host sends to Smart Widgets during their lifecycle.
 
 ## Overview
 
@@ -58,7 +58,7 @@ interface WidgetInitPayload {
 **Usage Example:**
 
 ```typescript
-import { createWidgetBridge } from '@flotilla/ext-shared';
+import { createWidgetBridge } from '@budabit/ext-shared';
 
 const bridge = createWidgetBridge();
 
@@ -190,7 +190,7 @@ export interface WidgetUnmountingPayload {
 }
 
 // Extend WidgetActionMap with lifecycle events
-declare module '@flotilla/ext-shared' {
+declare module '@budabit/ext-shared' {
   interface WidgetActionMap {
     'widget:init': {
       event: WidgetInitPayload;
@@ -208,7 +208,7 @@ declare module '@flotilla/ext-shared' {
 ## Complete Lifecycle Example
 
 ```typescript
-import { createWidgetBridge, type WidgetBridge } from '@flotilla/ext-shared';
+import { createWidgetBridge, type WidgetBridge } from '@budabit/ext-shared';
 
 class MyWidget {
   private bridge: WidgetBridge;

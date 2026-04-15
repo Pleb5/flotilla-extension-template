@@ -4,9 +4,9 @@ import type { Event as NostrEvent } from 'nostr-tools';
 export type { NostrEvent };
 
 /**
- * Shared types for Flotilla Smart Widgets (kind 30033) and the Flotilla host bridge.
+ * Shared types for BudaBit Smart Widgets (kind 30033) and the BudaBit host bridge.
  *
- * Flotilla's host runtime communicates with iframe widgets via an action-based postMessage protocol:
+ * BudaBit's host runtime communicates with iframe widgets via an action-based postMessage protocol:
  *   { type: 'request'|'response'|'event', action: string, payload?: any, id?: string }
  *
  * Extensions depend ONLY on nostr-tools (no welshman). All relay operations go through the bridge.
@@ -270,7 +270,7 @@ export type WidgetEventAction = {
 }[WidgetAction];
 
 // ---------------------------------------------------------------------------
-// Wire message shapes (compatible with Flotilla host bridge)
+// Wire message shapes (compatible with BudaBit host bridge)
 // ---------------------------------------------------------------------------
 
 export type WidgetRequestMessage<A extends WidgetRequestAction = WidgetRequestAction> = {
@@ -368,6 +368,6 @@ export const SmartWidgetNostrEventSchema = z.object({
 
 /**
  * Convenience type for permissions declared in widget tags.
- * Flotilla's host enforces these by comparing against requested actions.
+ * BudaBit's host enforces these by comparing against requested actions.
  */
 export type WidgetPermission = 'nostr:publish' | 'nostr:query' | 'ui:toast' | (string & {});

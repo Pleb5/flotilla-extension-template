@@ -11,11 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial template release
 - Monorepo structure with pnpm workspaces
-- `@flotilla/ext-shared` package with bridge and types
-- `@flotilla/ext-iframe` package with Svelte 5 demo app
-- `@flotilla/ext-worker` package (stubbed)
-- `@flotilla/ext-manifest` package with CLI generator
-- `@flotilla/test-utils` package with mocks
+- `@budabit/ext-shared` package with bridge and types
+- `@budabit/ext-iframe` package with Svelte 5 demo app
+- `@budabit/ext-worker` package (stubbed)
+- `@budabit/ext-manifest` package with CLI generator
+- `@budabit/test-utils` package with mocks
 - Comprehensive documentation
 - CI/CD workflow with GitHub Actions
 - E2E tests with Playwright
@@ -25,4 +25,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TypeScript strict mode
 - Single-file build output
 
-[0.1.0]: https://github.com/your-org/flotilla-extension-template/releases/tag/v0.1.0
+[0.1.0]: https://github.com/your-org/budabit-extension-template/releases/tag/v0.1.0
