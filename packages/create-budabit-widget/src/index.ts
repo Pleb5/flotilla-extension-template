@@ -39,11 +39,17 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
   mkdirSync(targetDir, { recursive: true });
   cpSync(templateDir, targetDir, { recursive: true });
 
-  // Rename gitignore → .gitignore (npm strips dotfiles named .gitignore during publish)
-  const gitignoreSrc = join(targetDir, 'gitignore');
-  const gitignoreDest = join(targetDir, '.gitignore');
-  if (existsSync(gitignoreSrc) && !existsSync(gitignoreDest)) {
-    renameSync(gitignoreSrc, gitignoreDest);
+  // Rename dotfiles that npm strips during publish (gitignore → .gitignore, npmrc → .npmrc)
+  const dotfileRenames: [string, string][] = [
+    ['gitignore', '.gitignore'],
+    ['npmrc', '.npmrc'],
+  ];
+  for (const [from, to] of dotfileRenames) {
+    const src = join(targetDir, from);
+    const dest = join(targetDir, to);
+    if (existsSync(src) && !existsSync(dest)) {
+      renameSync(src, dest);
+    }
   }
 
   // Resolve SDK path for --local mode
