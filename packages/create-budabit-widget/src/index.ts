@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { Command } from 'commander';
-import { existsSync, mkdirSync, cpSync, readFileSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, cpSync, readFileSync, writeFileSync, renameSync } from 'fs';
 import { resolve, join, basename } from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
@@ -38,6 +38,13 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
   // Copy template
   mkdirSync(targetDir, { recursive: true });
   cpSync(templateDir, targetDir, { recursive: true });
+
+  // Rename gitignore → .gitignore (npm strips dotfiles named .gitignore during publish)
+  const gitignoreSrc = join(targetDir, 'gitignore');
+  const gitignoreDest = join(targetDir, '.gitignore');
+  if (existsSync(gitignoreSrc) && !existsSync(gitignoreDest)) {
+    renameSync(gitignoreSrc, gitignoreDest);
+  }
 
   // Resolve SDK path for --local mode
   const sdkDir = resolve(__dirname, '..', '..', 'sdk');
