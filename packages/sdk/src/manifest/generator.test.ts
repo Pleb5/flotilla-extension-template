@@ -5,6 +5,7 @@ import {
   generateWidgetJson,
   generatePublishingInstructions,
 } from './generator.js';
+import { buildSlotConfig, SUPPORTED_SLOT_TYPES, type CLIOptions } from './cli.js';
 
 describe('generateSmartWidgetEvent()', () => {
   const baseOptions = {
@@ -107,7 +108,7 @@ describe('generateSmartWidgetEvent()', () => {
     ]);
   });
 
-  it('should add slot configuration', () => {
+  it('should add repo-tab slot configuration', () => {
     const event = generateSmartWidgetEvent({
       ...baseOptions,
       slot: { type: 'repo-tab', label: 'Pipeline', path: 'pipelines' },
@@ -115,6 +116,16 @@ describe('generateSmartWidgetEvent()', () => {
 
     const slotTag = event.tags.find((t) => t[0] === 'slot');
     expect(slotTag).toEqual(['slot', 'repo-tab', 'Pipeline', 'pipelines']);
+  });
+
+  it('should add community launcher slot configuration without a path', () => {
+    const event = generateSmartWidgetEvent({
+      ...baseOptions,
+      slot: { type: 'chat-message-actions', label: 'Discuss' },
+    });
+
+    const slotTag = event.tags.find((t) => t[0] === 'slot');
+    expect(slotTag).toEqual(['slot', 'chat-message-actions', 'Discuss']);
   });
 
   it('should add client tag when provided', () => {
@@ -134,6 +145,54 @@ describe('generateSmartWidgetEvent()', () => {
     });
 
     expect(event.created_at).toBe(1700000000);
+  });
+});
+
+describe('buildSlotConfig()', () => {
+  const build = (slotOptions: Partial<Pick<CLIOptions, 'slotType' | 'slotLabel' | 'slotPath'>>) =>
+    buildSlotConfig(slotOptions as CLIOptions);
+
+  it('should list the supported slot types', () => {
+    expect(SUPPORTED_SLOT_TYPES).toEqual([
+      'repo-tab',
+      'community-home-before-quicklinks',
+      'community-home-after-quicklinks',
+      'chat-message-actions',
+      'global-menu',
+    ]);
+  });
+
+  it('should build a repo-tab slot config with a path', () => {
+    expect(build({ slotType: 'repo-tab', slotLabel: 'Pipeline', slotPath: 'pipelines' })).toEqual({
+      type: 'repo-tab',
+      label: 'Pipeline',
+      path: 'pipelines',
+    });
+  });
+
+  it('should build a community slot config without a path', () => {
+    expect(build({ slotType: 'global-menu', slotLabel: 'Tools' })).toEqual({
+      type: 'global-menu',
+      label: 'Tools',
+    });
+  });
+
+  it('should reject unsupported slots', () => {
+    expect(() => build({ slotType: 'unsupported-slot', slotLabel: 'Discuss' })).toThrow(
+      /Unsupported slot type/
+    );
+  });
+
+  it('should require repo-tab slots to include a path', () => {
+    expect(() => build({ slotType: 'repo-tab', slotLabel: 'Pipeline' })).toThrow(
+      /--slot-path is required/
+    );
+  });
+
+  it('should reject slot paths for community slots', () => {
+    expect(() =>
+      build({ slotType: 'chat-message-actions', slotLabel: 'Discuss', slotPath: 'x' })
+    ).toThrow(/--slot-path is only valid/);
   });
 });
 

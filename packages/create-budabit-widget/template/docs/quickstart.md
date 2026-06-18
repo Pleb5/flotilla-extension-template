@@ -60,6 +60,7 @@ pnpm manifest:generate \
 ```
 
 Notes:
+
 - `--type` should be `tool` (bidirectional) or `action` (one-way UX).
 - `--identifier` is optional; if omitted it will be derived from `--title`.
 - `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
@@ -83,9 +84,25 @@ Create `host-test.html` next to the repo root and open it in your browser:
     <meta charset="utf-8" />
     <title>Smart Widget Host Test</title>
     <style>
-      body { font-family: system-ui, -apple-system, sans-serif; margin: 16px; }
-      iframe { width: 100%; height: 700px; border: 1px solid #ccc; border-radius: 8px; }
-      pre { background: #f7f7f7; padding: 12px; border-radius: 8px; overflow: auto; }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        margin: 16px;
+      }
+      iframe {
+        width: 100%;
+        height: 700px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+      pre {
+        background: #f7f7f7;
+        padding: 12px;
+        border-radius: 8px;
+        overflow: auto;
+      }
     </style>
   </head>
   <body>
@@ -101,92 +118,107 @@ Create `host-test.html` next to the repo root and open it in your browser:
     <pre id="log"></pre>
 
     <script>
-      const iframe = document.getElementById("widget");
-      const logEl = document.getElementById("log");
+      const iframe = document.getElementById('widget');
+      const logEl = document.getElementById('log');
 
       const log = (...args) => {
-        logEl.textContent += args.map(String).join(" ") + "\n";
+        logEl.textContent += args.map(String).join(' ') + '\n';
         console.log(...args);
       };
 
-      window.addEventListener("message", async (ev) => {
+      window.addEventListener('message', async (ev) => {
         const msg = ev.data;
-        if (!msg || typeof msg !== "object") return;
+        if (!msg || typeof msg !== 'object') return;
 
         // Handle BudaBit bridge protocol
-        if (msg.type === "request") {
-          log("[host] request:", msg.action, JSON.stringify(msg.payload));
+        if (msg.type === 'request') {
+          log('[host] request:', msg.action, JSON.stringify(msg.payload));
 
-          if (msg.action === "nostr:publish") {
-            iframe.contentWindow.postMessage({
-              type: "response", id: msg.id, action: msg.action,
-              payload: { status: "ok", result: { eventId: "fake-event-id" } }
-            }, "*");
+          if (msg.action === 'nostr:publish') {
+            iframe.contentWindow.postMessage(
+              {
+                type: 'response',
+                id: msg.id,
+                action: msg.action,
+                payload: { status: 'ok', result: { eventId: 'fake-event-id' } },
+              },
+              '*'
+            );
             return;
           }
 
-          if (msg.action === "nostr:query") {
-            iframe.contentWindow.postMessage({
-              type: "response", id: msg.id, action: msg.action,
-              payload: { events: [], status: "ok" }
-            }, "*");
+          if (msg.action === 'nostr:query') {
+            iframe.contentWindow.postMessage(
+              {
+                type: 'response',
+                id: msg.id,
+                action: msg.action,
+                payload: { events: [], status: 'ok' },
+              },
+              '*'
+            );
             return;
           }
 
-          if (msg.action === "ui:toast" || msg.action === "ui:resize") {
-            iframe.contentWindow.postMessage({
-              type: "response", id: msg.id, action: msg.action,
-              payload: { status: "ok" }
-            }, "*");
+          if (msg.action === 'ui:toast' || msg.action === 'ui:resize') {
+            iframe.contentWindow.postMessage(
+              {
+                type: 'response',
+                id: msg.id,
+                action: msg.action,
+                payload: { status: 'ok' },
+              },
+              '*'
+            );
             return;
           }
 
           // Unknown action
           iframe.contentWindow.postMessage(
             {
-              type: "response",
+              type: 'response',
               id: msg.id,
               action: msg.action,
-              payload: { error: "Unknown action: " + msg.action }
+              payload: { error: 'Unknown action: ' + msg.action },
             },
-            "*"
+            '*'
           );
         }
       });
 
       // Send widget:init immediately (before load)
-      log("[host] sending widget:init");
+      log('[host] sending widget:init');
       iframe.contentWindow?.postMessage(
         {
-          type: "event",
-          action: "widget:init",
+          type: 'event',
+          action: 'widget:init',
           payload: {
-            extensionId: "demo-widget",
-            hostVersion: "1.0.0",
+            extensionId: 'demo-widget',
+            hostVersion: '1.0.0',
             repoContext: {
-              owner: "demo-org",
-              name: "demo-repo",
-              fullName: "demo-org/demo-repo",
-              defaultBranch: "main"
-            }
-          }
+              owner: 'demo-org',
+              name: 'demo-repo',
+              fullName: 'demo-org/demo-repo',
+              defaultBranch: 'main',
+            },
+          },
         },
-        "*"
+        '*'
       );
 
       // Send widget:mounted once iframe is loaded
-      iframe.addEventListener("load", () => {
-        log("[host] iframe loaded; sending widget:mounted");
+      iframe.addEventListener('load', () => {
+        log('[host] iframe loaded; sending widget:mounted');
         iframe.contentWindow.postMessage(
           {
-            type: "event",
-            action: "widget:mounted",
+            type: 'event',
+            action: 'widget:mounted',
             payload: {
               mountedAt: Date.now(),
-              slot: "room:panel"
-            }
+              slot: 'repo-tab',
+            },
           },
-          "*"
+          '*'
         );
       });
     </script>

@@ -3,14 +3,29 @@ import type { SmartWidgetNostrEvent, WidgetPermission } from '@budabit/ext-share
 
 export type SmartWidgetType = 'action' | 'tool';
 
-export interface SlotConfig {
-  /** Slot type (e.g., "repo-tab" for repository tab integration). */
-  type: string;
-  /** Display label for the slot. */
-  label: string;
-  /** URL path segment for routing. */
-  path: string;
-}
+export type WidgetCommunitySlotType =
+  | 'community-home-before-quicklinks'
+  | 'community-home-after-quicklinks'
+  | 'chat-message-actions'
+  | 'global-menu';
+
+export type WidgetSlotType = 'repo-tab' | WidgetCommunitySlotType;
+
+export type SlotConfig =
+  | {
+      /** Full repository tab integration. */
+      type: 'repo-tab';
+      /** Display label for the tab. */
+      label: string;
+      /** URL path segment for routing. */
+      path: string;
+    }
+  | {
+      /** Community-targeted launcher/card slot. */
+      type: WidgetCommunitySlotType;
+      /** Display label for the launcher/card. */
+      label: string;
+    };
 
 export interface SmartWidgetEventOptions {
   /** The widget identifier (maps to the `d` tag). If omitted, a stable identifier is derived. */
@@ -36,7 +51,7 @@ export interface SmartWidgetEventOptions {
   };
   /** Override created_at timestamp (seconds). */
   createdAt?: number;
-  /** Slot configuration for repo-tab or other integration points. */
+  /** Optional supported BudaBit Smart Widget slot configuration. */
   slot?: SlotConfig;
   /** Nostr event kinds this widget queries/subscribes to (maps to `nostrKinds` tags). */
   nostrKinds?: number[];
@@ -45,9 +60,7 @@ export interface SmartWidgetEventOptions {
 function deriveIdentifier(title: string, appUrl: string): string {
   // Stable, URL+title derived identifier. Keeps output deterministic if caller omits identifier.
   // NOTE: The `d` tag can be any string; BudaBit uses it as a settings key.
-  const digest = createHash('sha256')
-    .update(`${title}\n${appUrl}`)
-    .digest('hex');
+  const digest = createHash('sha256').update(`${title}\n${appUrl}`).digest('hex');
   return digest.slice(0, 24);
 }
 
@@ -87,9 +100,11 @@ export function generateSmartWidgetEvent(options: SmartWidgetEventOptions): Smar
     }
   }
 
-  // Add slot configuration for repo-tab integration
+  // Add supported slot configuration. Repo tabs include a route path; launcher/card slots do not.
   if (options.slot) {
-    tags.push(['slot', options.slot.type, options.slot.label, options.slot.path]);
+    const slotTag = ['slot', options.slot.type, options.slot.label];
+    if (options.slot.type === 'repo-tab') slotTag.push(options.slot.path);
+    tags.push(slotTag);
   }
 
   // Add nostrKinds tags for declared event kinds

@@ -2,17 +2,20 @@
 
 import { Command, Option } from 'commander';
 import { mkdirSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
+import { fileURLToPath } from 'url';
 import {
   generateSmartWidgetEvent,
   formatWidgetEvent,
   generateWidgetJson,
   generatePublishingInstructions,
+  type SlotConfig,
   type SmartWidgetType,
+  type WidgetSlotType,
 } from './generator.js';
 import type { WidgetPermission } from '../types.js';
 
-interface CLIOptions {
+export interface CLIOptions {
   type: SmartWidgetType;
   appUrl: string;
   icon: string;
@@ -49,39 +52,82 @@ function getIdentifierFromEventTags(tags: string[][]): string {
   return tags.find((t) => t[0] === 'd')?.[1] ?? '';
 }
 
+export const SUPPORTED_SLOT_TYPES: WidgetSlotType[] = [
+  'repo-tab',
+  'community-home-before-quicklinks',
+  'community-home-after-quicklinks',
+  'chat-message-actions',
+  'global-menu',
+];
+
+function isWidgetSlotType(value: string): value is WidgetSlotType {
+  return SUPPORTED_SLOT_TYPES.includes(value as WidgetSlotType);
+}
+
+export function buildSlotConfig(options: CLIOptions): SlotConfig | undefined {
+  if (!options.slotType && !options.slotLabel && !options.slotPath) return undefined;
+  if (!options.slotType) throw new Error('--slot-type is required when configuring a slot');
+
+  const type = options.slotType.trim();
+  if (!isWidgetSlotType(type)) {
+    throw new Error(
+      `Unsupported slot type "${options.slotType}". Supported slots: ${SUPPORTED_SLOT_TYPES.join(', ')}`
+    );
+  }
+
+  const label = options.slotLabel?.trim();
+  if (!label) throw new Error('--slot-label is required when configuring a slot');
+
+  if (type === 'repo-tab') {
+    const path = options.slotPath?.trim();
+    if (!path) throw new Error('--slot-path is required for repo-tab slots');
+    return { type, label, path };
+  }
+
+  if (options.slotPath?.trim()) {
+    throw new Error('--slot-path is only valid for repo-tab slots');
+  }
+
+  return { type, label };
+}
+
 const program = new Command();
 
 program
   .name('generate-widget')
   .description('Generate a Smart Widget (kind 30033) event + widget.json for BudaBit')
   .addOption(
-    new Option('--type <tool|action>', 'Smart Widget type (iframe-based)').choices(['tool', 'action']).default('tool')
+    new Option('--type <tool|action>', 'Smart Widget type (iframe-based)')
+      .choices(['tool', 'action'])
+      .default('tool')
   )
   .requiredOption('--title <title>', 'Widget title (maps to event.content)')
   .requiredOption('--app-url <url>', 'Iframe app URL (maps to button tag of type app)')
   .requiredOption('--icon <url>', 'Icon URL (maps to icon tag; required for action/tool widgets)')
   .requiredOption('--image <url>', 'Image URL (maps to image tag; required)')
   .option('--button-title <title>', 'Button label (maps to button tag label)', 'Open')
-  .option('--identifier <d>', 'Widget identifier (d tag). If omitted, a stable identifier is derived.')
+  .option(
+    '--identifier <d>',
+    'Widget identifier (d tag). If omitted, a stable identifier is derived.'
+  )
   .option(
     '--permissions <csv>',
     'Comma-separated permissions (permission tags)',
     'nostr:publish,ui:toast'
   )
-  .option('--nostr-kinds <csv>', 'Comma-separated Nostr event kinds this widget queries (e.g. "30301,30302")')
+  .option(
+    '--nostr-kinds <csv>',
+    'Comma-separated Nostr event kinds this widget queries (e.g. "30301,30302")'
+  )
   .option('--pubkey <hex>', 'Optional creator pubkey (hex) for widget.json (discovery tooling)')
   .option('--output <dir>', 'Output directory', 'dist/widget')
-  .option('--slot-type <type>', 'Slot type for integration (e.g., repo-tab)')
+  .option('--slot-type <type>', `Supported slot type: ${SUPPORTED_SLOT_TYPES.join(', ')}`)
   .option('--slot-label <label>', 'Slot display label')
-  .option('--slot-path <path>', 'Slot URL path segment')
+  .option('--slot-path <path>', 'Repo-tab URL path segment')
   .action((options: CLIOptions) => {
     try {
       const permissions = parsePermissions(options.permissions);
-
-      // Build slot config if all slot options are provided
-      const slot = options.slotType && options.slotLabel && options.slotPath
-        ? { type: options.slotType, label: options.slotLabel, path: options.slotPath }
-        : undefined;
+      const slot = buildSlotConfig(options);
 
       const nostrKinds = parseNostrKinds(options.nostrKinds);
 
@@ -139,4 +185,6 @@ program
     }
   });
 
-program.parse();
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+  program.parse();
+}
