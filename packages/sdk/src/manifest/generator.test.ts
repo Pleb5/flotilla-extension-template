@@ -61,6 +61,17 @@ describe('generateSmartWidgetEvent()', () => {
     expect(d).toBe('my-custom-id');
   });
 
+  it('should add release metadata tags when provided', () => {
+    const event = generateSmartWidgetEvent({
+      ...baseOptions,
+      version: '1.2.3',
+      changelog: 'Add Blossom-backed release metadata',
+    });
+
+    expect(event.tags).toContainEqual(['version', '1.2.3']);
+    expect(event.tags).toContainEqual(['changelog', 'Add Blossom-backed release metadata']);
+  });
+
   it('should generate different identifiers for different inputs', () => {
     const event1 = generateSmartWidgetEvent(baseOptions);
     const event2 = generateSmartWidgetEvent({ ...baseOptions, title: 'Other Widget' });

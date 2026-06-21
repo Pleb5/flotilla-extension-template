@@ -54,6 +54,9 @@ pnpm manifest:generate \
   --icon "https://cdn.example.com/my-widget/icon.png" \
   --image "https://cdn.example.com/my-widget/preview.png" \
   --button-title "Open" \
+  --identifier "my-smart-widget" \
+  --version "1.0.0" \
+  --changelog "Initial release" \
   --permissions "nostr:publish,nostr:query,nostr:subscribe,ui:toast" \
   --nostr-kinds "30301,30302" \
   --output "dist/widget"
@@ -62,7 +65,8 @@ pnpm manifest:generate \
 Notes:
 
 - `--type` should be `tool` (bidirectional) or `action` (one-way UX).
-- `--identifier` is optional; if omitted it will be derived from `--title`.
+- `--identifier` is optional for local experiments, but public release workflows should set an explicit stable value and reuse it for every update.
+- `--version` and `--changelog` are optional release metadata shown by BudaBit when an installed widget update is available.
 - `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
 - `--nostr-kinds` declares which Nostr event kinds your widget needs to query/subscribe to.
 - `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions.
@@ -283,6 +287,14 @@ Follow the generated instructions:
 - `dist/widget/PUBLISHING.md`
 
 It walks you through signing and publishing the kind `30033` event.
+
+For Blossom-backed releases:
+
+1. Build the iframe app with `pnpm build`.
+2. Upload the built `index.html` to Blossom, or run `pnpm widget:publish:blossom` to upload before signing.
+3. Publish a kind `30033` event whose `button`/`app` URL points at the Blossom URL.
+4. For updates, regenerate with the same `--identifier`, a newer `--version` / `--changelog`, and publish the newer event.
+5. BudaBit detects the same publisher pubkey + kind `30033` + same `d` identifier and shows installed users a manual update.
 
 ## Common Commands
 

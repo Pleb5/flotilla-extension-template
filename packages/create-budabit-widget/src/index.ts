@@ -137,7 +137,10 @@ function scaffold(projectName: string, options: ScaffoldOptions) {
       --title '${packageName}' \\
       --app-url 'https://your-cdn.com/${packageName}/index.html' \\
       --icon 'https://your-cdn.com/${packageName}/icon.png' \\
-      --image 'https://your-cdn.com/${packageName}/preview.png'
+      --image 'https://your-cdn.com/${packageName}/preview.png' \\
+      --identifier '${packageName}' \\
+      --version '0.1.0' \\
+      --changelog 'Initial release'
 
   See docs/ for architecture and integration guides.
 `);

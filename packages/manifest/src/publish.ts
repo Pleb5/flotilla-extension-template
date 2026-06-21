@@ -30,6 +30,32 @@ const DEFAULT_RELAYS = [
   'wss://nos.lol',
 ];
 
+function getEventTags(event: { tags?: unknown }): string[][] {
+  return Array.isArray(event.tags) ? (event.tags as string[][]) : [];
+}
+
+function getTagValue(event: { tags?: unknown }, name: string): string | undefined {
+  return getEventTags(event).find((tag) => tag[0] === name)?.[1];
+}
+
+function getEventAppUrl(event: { tags?: unknown }): string | undefined {
+  return getEventTags(event).find((tag) => tag[0] === 'button' && tag[2] === 'app')?.[3];
+}
+
+function logReleasePreview(event: { tags?: unknown }, relays: string[]): void {
+  const identifier = getTagValue(event, 'd') || '(missing)';
+  const version = getTagValue(event, 'version');
+  const changelog = getTagValue(event, 'changelog');
+  const appUrl = getEventAppUrl(event) || '(missing)';
+
+  console.log('\n📋 Release preview:');
+  console.log(`   Identifier (d): ${identifier}`);
+  if (version) console.log(`   Version: ${version}`);
+  if (changelog) console.log(`   Changelog: ${changelog}`);
+  console.log(`   App URL: ${appUrl}`);
+  console.log(`   Relay targets: ${relays.join(', ')}`);
+}
+
 async function publishWithLocalKey(
   unsignedEvent: import('nostr-tools').EventTemplate,
   skHex: string,
@@ -158,8 +184,11 @@ async function publishWidget(options: PublishOptions): Promise<void> {
     }
   }
 
+  const relays = options.relays.length > 0 ? options.relays : DEFAULT_RELAYS;
+
   if (options.dryRun) {
     console.log('🔍 Dry run mode - not publishing to relays\n');
+    logReleasePreview(unsignedEvent, relays);
     console.log('Event to be signed:');
     console.log(JSON.stringify(unsignedEvent, null, 2));
     if (bunkerUrl) {
@@ -172,7 +201,7 @@ async function publishWidget(options: PublishOptions): Promise<void> {
     } else {
       console.log('\nSigning method: Not configured (set NOSTR_SK or NOSTR_BUNKER)');
     }
-    console.log('Relays:', options.relays.join(', '));
+    console.log('Relays:', relays.join(', '));
     return;
   }
 
@@ -208,8 +237,6 @@ async function publishWidget(options: PublishOptions): Promise<void> {
 
   console.log('📤 Publishing to relays...');
   const pool = new SimplePool();
-
-  const relays = options.relays.length > 0 ? options.relays : DEFAULT_RELAYS;
 
   try {
     const results = await Promise.allSettled(
@@ -248,6 +275,9 @@ async function publishWidget(options: PublishOptions): Promise<void> {
 
   // Generate naddr
   const identifier = signedEvent.tags.find((t: string[]) => t[0] === 'd')?.[1] ?? '';
+  const version = getTagValue(signedEvent, 'version');
+  const changelog = getTagValue(signedEvent, 'changelog');
+  const appUrl = getEventAppUrl(signedEvent);
   const naddr = nip19.naddrEncode({
     pubkey: signedEvent.pubkey,
     kind: 30033,
@@ -259,6 +289,10 @@ async function publishWidget(options: PublishOptions): Promise<void> {
   console.log(`   Event ID: ${signedEvent.id}`);
   console.log(`   Pubkey: ${signedEvent.pubkey}`);
   console.log(`   Identifier (d): ${identifier}`);
+  if (version) console.log(`   Version: ${version}`);
+  if (changelog) console.log(`   Changelog: ${changelog}`);
+  console.log(`   App URL: ${appUrl || '(missing)'}`);
+  console.log(`   Relay targets: ${relays.join(', ')}`);
   console.log(`\n🔗 naddr (use this to install in BudaBit):`);
   console.log(`   ${naddr}`);
   console.log(`\n📦 npub:`);

@@ -12,6 +12,7 @@ A BudaBit Smart Widget is represented on Nostr as a **kind `30033` addressable e
 - A launch button that points to your hosted iframe app (`button ... app ...`)
 - Declared permissions (`permission` tags)
 - Declared Nostr event kinds (`nostrKinds` tags)
+- Optional release metadata (`version`, `changelog` tags)
 
 BudaBit discovers and renders widgets based on these events and enforces privileged actions based on declared permissions.
 
@@ -129,10 +130,11 @@ Your widget code lives in `packages/iframe-app/`. The `budabit-sdk` package prov
 ### Generate Manifest
 
 ```bash
-pnpm manifest:generate
+pnpm manifest:generate --identifier 'my-widget' --version '1.0.0' --changelog 'Initial release'
 ```
 
 This generates a kind `30033` event JSON in `dist/widget/`.
+Use an explicit stable `--identifier` for public releases and reuse it for every update.
 
 ### Quick Publish to Blossom
 
@@ -142,6 +144,8 @@ export NOSTR_SK=your_secret_key_hex
 # Build, upload to Blossom, sign, and publish to relays
 pnpm widget:publish:blossom
 ```
+
+For repeat releases, keep the same `--identifier`, update `--version` / `--changelog`, and publish a newer kind `30033` event. BudaBit uses the same publisher pubkey + kind `30033` + same `d` identifier as one widget line and shows installed users a manual update.
 
 ### Publish to GitHub Releases
 
@@ -158,7 +162,7 @@ pnpm widget:publish:github
 
 1. Build: `pnpm build`
 2. Host `packages/iframe-app/dist/index.html` on HTTPS
-3. Generate manifest: `pnpm manifest:generate --app-url 'https://your-cdn.com/widget/index.html'`
+3. Generate manifest: `pnpm manifest:generate --app-url 'https://your-cdn.com/widget/index.html' --identifier 'my-widget' --version '1.0.0' --changelog 'Initial release'`
 4. Sign and publish the kind `30033` event (see `dist/widget/PUBLISHING.md`)
 
 ### Publishing Commands

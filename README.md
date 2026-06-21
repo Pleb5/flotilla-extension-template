@@ -20,6 +20,7 @@ A BudaBit Smart Widget is represented on Nostr as a **kind `30033` addressable e
 - A launch button that points to your hosted iframe app (`button ... app ...`)
 - Declared permissions (`permission` tags)
 - Declared Nostr event kinds (`nostrKinds` tags)
+- Optional release metadata (`version`, `changelog` tags)
 
 BudaBit discovers and renders widgets based on these events and enforces privileged actions based on declared permissions.
 
@@ -80,12 +81,16 @@ pnpm manifest:generate \
   --icon 'https://cdn.example.com/my-widget/icon.png' \
   --image 'https://cdn.example.com/my-widget/preview.png' \
   --button-title 'Open' \
+  --identifier 'my-smart-widget' \
+  --version '1.0.0' \
+  --changelog 'Initial release' \
   --permissions 'nostr:publish,nostr:query,nostr:subscribe,ui:toast' \
   --nostr-kinds '30301,30302'
 ```
 
 Notes:
-- `--identifier` is optional; if omitted it will be derived.
+- `--identifier` is optional for local experiments, but public releases should use an explicit stable value and reuse it for every update.
+- `--version` and `--changelog` are optional release metadata shown by BudaBit update UI.
 - `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
 - `--nostr-kinds` declares which Nostr event kinds your widget needs.
 - `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions.
@@ -247,6 +252,8 @@ This will:
 6. Publish to Nostr relays
 7. Upload to Blossom again for redundancy
 
+For repeat releases, keep the same `--identifier`, update `--version` / `--changelog`, and publish a newer kind `30033` event. BudaBit uses the same publisher pubkey + kind `30033` + same `d` identifier as one widget line and shows installed users a manual update.
+
 ### Publish to GitHub Releases
 
 Alternatively, publish via GitHub releases:
@@ -279,6 +286,8 @@ pnpm manifest:generate \
   --icon 'Sparkles' \
   --image 'https://cdn.example.com/my-widget/preview.png' \
   --identifier 'my-widget' \
+  --version '1.0.0' \
+  --changelog 'Initial release' \
   --permissions 'nostr:publish,ui:toast'
 ```
 

@@ -23,6 +23,8 @@ export interface CLIOptions {
   buttonTitle: string;
   identifier?: string;
   title: string;
+  version?: string;
+  changelog?: string;
   permissions: string;
   nostrKinds?: string;
   pubkey?: string;
@@ -59,6 +61,8 @@ export const SUPPORTED_SLOT_TYPES: WidgetSlotType[] = [
   'chat-message-actions',
   'global-menu',
 ];
+
+const DEFAULT_SMART_WIDGET_RELAYS = ['wss://relay.yakihonne.com'];
 
 function isWidgetSlotType(value: string): value is WidgetSlotType {
   return SUPPORTED_SLOT_TYPES.includes(value as WidgetSlotType);
@@ -108,8 +112,10 @@ program
   .option('--button-title <title>', 'Button label (maps to button tag label)', 'Open')
   .option(
     '--identifier <d>',
-    'Widget identifier (d tag). If omitted, a stable identifier is derived.'
+    'Widget identifier (d tag). Use an explicit stable value for releases. If omitted, a stable identifier is derived.'
   )
+  .option('--version <version>', 'Optional release version tag (for BudaBit update summaries)')
+  .option('--changelog <text>', 'Optional release changelog tag (for BudaBit update summaries)')
   .option(
     '--permissions <csv>',
     'Comma-separated permissions (permission tags)',
@@ -139,6 +145,8 @@ program
         iconUrl: options.icon,
         appUrl: options.appUrl,
         buttonTitle: options.buttonTitle,
+        version: options.version,
+        changelog: options.changelog,
         permissions,
         slot,
         nostrKinds,
@@ -170,8 +178,17 @@ program
       const identifier = getIdentifierFromEventTags(event.tags);
 
       console.log('✅ Smart Widget files generated successfully!\n');
+      if (!options.identifier?.trim()) {
+        console.warn(
+          '⚠️  Release tip: pass --identifier <stable-d> and reuse it for every public release.\n'
+        );
+      }
       console.log(`🧩 Widget type: ${options.type}`);
-      console.log(`🆔 Identifier (d): ${identifier}\n`);
+      console.log(`🆔 Identifier (d): ${identifier}`);
+      if (options.version?.trim()) console.log(`🏷️  Version: ${options.version.trim()}`);
+      if (options.changelog?.trim()) console.log(`📝 Changelog: ${options.changelog.trim()}`);
+      console.log(`🌐 App URL: ${options.appUrl}`);
+      console.log(`📡 Relay targets: ${DEFAULT_SMART_WIDGET_RELAYS.join(', ')}\n`);
       console.log(`📄 Event (unsigned): ${eventPath}`);
       console.log(`🪪 widget.json: ${widgetJsonPath}`);
       console.log(`📖 Publishing instructions: ${instructionsPath}\n`);

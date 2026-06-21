@@ -22,6 +22,7 @@ A Smart Widget is represented by:
 - A launch button that includes an `app` URL (iframe entry point)
 - Zero or more `permission` tags (one per permission string)
 - Zero or more `nostrKinds` tags (one per Nostr event kind the widget needs)
+- Optional `version` and `changelog` tags for release/update display
 
 BudaBit uses this event to:
 - discover and list the widget
@@ -56,7 +57,9 @@ Example:
     ["permission", "nostr:subscribe"],
     ["permission", "ui:toast"],
     ["nostrKinds", "30301"],
-    ["nostrKinds", "30302"]
+    ["nostrKinds", "30302"],
+    ["version", "1.0.0"],
+    ["changelog", "Initial Blossom-backed release"]
   ],
   "created_at": 1700000000
 }
@@ -136,6 +139,20 @@ Notes:
 - Only declared kinds (plus universal kinds 0 and 10002) can be queried/subscribed.
 - Omitting `nostrKinds` limits to profiles (kind 0) and relay lists (kind 10002).
 
+### Release Metadata
+
+#### `version`
+
+Optional display metadata for release/update UI.
+
+- **Example**: `["version", "1.0.0"]`
+
+#### `changelog`
+
+Optional short release notes shown when BudaBit detects a newer installed widget event.
+
+- **Example**: `["changelog", "Added Blossom-backed deployment"]`
+
 ## Generating Smart Widget files (CLI)
 
 This repository includes a generator that outputs:
@@ -154,13 +171,18 @@ pnpm manifest:generate \
   --icon "https://cdn.example.com/my-widget/icon.png" \
   --image "https://cdn.example.com/my-widget/preview.png" \
   --button-title "Open" \
+  --identifier "my-smart-widget" \
+  --version "1.0.0" \
+  --changelog "Initial release" \
   --permissions "nostr:publish,nostr:query,nostr:subscribe,ui:toast" \
   --nostr-kinds "30301,30302" \
   --output "dist/widget"
 ```
 
 Optional:
-- `--identifier "my-smart-widget"` (if omitted, derived from `--title`)
+- `--identifier "my-smart-widget"` (strongly recommended for public releases; if omitted, derived for local experiments)
+- `--version "1.0.0"` (optional update display metadata)
+- `--changelog "Initial release"` (optional update display metadata)
 - `--pubkey "<hex pubkey>"` (if provided, publishing instructions can include an `naddr` hint)
 - `--nostr-kinds "30301,30302"` (declares which Nostr event kinds the widget needs)
 
@@ -202,6 +224,14 @@ if (identifier) {
 ### Updating
 
 Smart Widgets are **addressable events** (kind `30033` + `d` tag). Publishing a new event with the same `d` value replaces the previous version.
+
+For stable Blossom-backed releases:
+
+1. Choose an explicit `--identifier` before the first public release.
+2. Build the iframe app and upload the built HTML to Blossom.
+3. Publish the kind `30033` event with the same `d` identifier and a `button`/`app` URL pointing to the Blossom URL.
+4. For every update, reuse the same `d`, publish a newer event with a newer `created_at`, and update optional `version` / `changelog` tags.
+5. BudaBit treats the same publisher pubkey + kind `30033` + same `d` value as one widget line, shows update availability, and lets installed users manually apply it.
 
 ## Optional: Hosting `/.well-known/widget.json`
 

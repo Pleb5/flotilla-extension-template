@@ -42,6 +42,10 @@ export interface SmartWidgetEventOptions {
   appUrl: string;
   /** Button label (maps to the `button` tag label). */
   buttonTitle: string;
+  /** Optional release version metadata (maps to the `version` tag). */
+  version?: string;
+  /** Optional release changelog metadata (maps to the `changelog` tag). */
+  changelog?: string;
   /** Permissions (maps to `permission` tags). */
   permissions?: WidgetPermission[];
   /** Optional client tag metadata (used by BudaBit as an origin hint). */
@@ -75,10 +79,14 @@ function deriveIdentifier(title: string, appUrl: string): string {
  * - ["image", imageUrl]
  * - ["icon", iconUrl]
  * - ["button", buttonTitle, "app", appUrl]
+ * - ["version", version] (optional)
+ * - ["changelog", changelog] (optional)
  * - ["permission", "nostr:publish"] (repeatable)
  */
 export function generateSmartWidgetEvent(options: SmartWidgetEventOptions): SmartWidgetNostrEvent {
   const identifier = options.identifier?.trim() || deriveIdentifier(options.title, options.appUrl);
+  const version = options.version?.trim();
+  const changelog = options.changelog?.trim();
 
   const tags: string[][] = [
     ['d', identifier],
@@ -87,6 +95,9 @@ export function generateSmartWidgetEvent(options: SmartWidgetEventOptions): Smar
     ['icon', options.iconUrl],
     ['button', options.buttonTitle, 'app', options.appUrl],
   ];
+
+  if (version) tags.push(['version', version]);
+  if (changelog) tags.push(['changelog', changelog]);
 
   if (options.client?.name) {
     const clientTag: string[] = ['client', options.client.name];
@@ -228,6 +239,13 @@ console.log('naddr:', naddr);
 
 - Copy the printed \`naddr\`
 - In BudaBit: Settings → Extensions → Install Smart Widget (naddr)
+
+## Stable Release Workflow
+
+- Pick an explicit, stable \`--identifier\` for the widget line before your first public release.
+- Build the iframe app, upload the built HTML to Blossom, then publish a new kind \`30033\` event that points its \`button\`/\`app\` URL at that Blossom URL.
+- For each release, reuse the same \`d\` identifier, publish a newer event with a newer \`created_at\`, and update optional \`version\` / \`changelog\` tags.
+- BudaBit treats the same pubkey + kind \`30033\` + same \`d\` value as the same widget line. Installed users see update availability and manually apply the newer event.
 
 ## Notes
 
