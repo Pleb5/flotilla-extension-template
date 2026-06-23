@@ -78,6 +78,7 @@ The host is responsible for:
     ["permission", "nostr:publish"],
     ["permission", "nostr:query"],
     ["permission", "nostr:subscribe"],
+    ["permission", "community:queryTargetEvents"],
     ["permission", "ui:toast"],
     ["nostrKinds", "30301"],
     ["nostrKinds", "30302"]
@@ -187,7 +188,7 @@ function createHostWidgetBridge(opts: {
   };
 
   const isPrivileged = (action: string) =>
-    action.startsWith('nostr:') || action.startsWith('storage:');
+    action.startsWith('nostr:') || action.startsWith('storage:') || action.startsWith('community:');
 
   const isActionAllowed = (action: string) => {
     if (!isPrivileged(action)) return true;
@@ -279,6 +280,11 @@ const bridge = createHostWidgetBridge({
       };
     }
 
+    if (action === 'community:queryTargetEvents') {
+      // Host maps logical target IDs to active community sections and writers first.
+      return { status: 'ok', events: [], relays: [], targetIds: ['calendar'] };
+    }
+
     throw new Error(`Unknown action: ${action}`);
   },
 });
@@ -292,6 +298,25 @@ bridge.postEvent('widget:init', {
     name: 'example-repo',
     fullName: 'example-org/example-repo',
     defaultBranch: 'main',
+  },
+  communityContext: {
+    version: 1,
+    pubkey: '<community-pubkey>',
+    ncommunity: 'ncommunity://...',
+    relays: ['wss://relay.example.com'],
+    relayHints: ['wss://relay.example.com'],
+    blossomServers: [],
+    sections: [{ name: 'Events and meetups', kinds: [{ kind: 31923 }, { kind: 31922 }] }],
+    viewer: { pubkey: '<viewer-pubkey>', isOwner: false, isBanned: false },
+    writeTargets: {
+      calendar: {
+        id: 'calendar',
+        kind: 31923,
+        sectionNames: ['Events and meetups'],
+        writableSectionNames: ['Events and meetups'],
+        canWrite: true,
+      },
+    },
   },
 });
 
@@ -346,6 +371,20 @@ function onRepoChange(newRepo) {
 | `storage:remove`    | `storage:remove`  | Remove from scoped storage                      |
 | `storage:keys`      | `storage:keys`    | List storage keys                               |
 | `context:getRepo`   | —                 | Get repo context                                |
+| `community:queryTargetEvents` | `community:queryTargetEvents` | Query active-community events by logical write target |
+
+### `community:queryTargetEvents` — Section-Aware Community Queries
+
+Community section names can be renamed per community. Widgets should request events by logical write target IDs instead of hard-coding section names or reconstructing profile-list grants.
+
+```ts
+const res = await bridge.request('community:queryTargetEvents', {
+  targetIds: ['calendar', 'calendarDate'],
+  limit: 10,
+});
+```
+
+The host resolves each target against the active community definition, maps it to the current section names and authorized writer pubkeys, then constructs the relay filters. The action is privileged and requires a `permission` tag. Use `communityContext.writeTargets[targetId].canWrite` to gate configuration controls; content visibility should not be gated by write access.
 
 ### `nostr:subscribe` — Persistent Subscriptions
 

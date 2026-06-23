@@ -183,7 +183,7 @@ pnpm manifest:generate \
   --identifier "my-smart-widget" \
   --version "1.0.0" \
   --changelog "Initial release" \
-  --permissions "nostr:publish,nostr:query,nostr:subscribe,ui:toast" \
+  --permissions "nostr:publish,nostr:query,nostr:subscribe,community:queryTargetEvents,ui:toast" \
   --nostr-kinds "30301,30302" \
   --output "dist/widget"
 ```

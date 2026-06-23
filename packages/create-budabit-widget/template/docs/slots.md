@@ -140,7 +140,7 @@ export type SlotConfig =
 
 ## Runtime Context
 
-Widgets receive slot and context data through the BudaBit bridge lifecycle payloads. The exact fields depend on the slot.
+Widgets receive slot and context data through the BudaBit bridge lifecycle payloads. The exact fields depend on the slot. Community slots receive a generic `communityContext` when the host has loaded the active community.
 
 ```typescript
 bridge.onEvent('widget:init', (payload) => {
@@ -151,7 +151,9 @@ bridge.onEvent('widget:init', (payload) => {
   }
 
   if (payload.communityContext) {
-    console.log('Community:', payload.communityContext.naddr);
+    console.log('Community:', payload.communityContext.ncommunity);
+    console.log('Sections:', payload.communityContext.sections);
+    console.log('Calendar write access:', payload.communityContext.writeTargets.calendar?.canWrite);
   }
 
   if (payload.roomContext) {
@@ -164,6 +166,19 @@ bridge.onEvent('widget:init', (payload) => {
 });
 ```
 
+`communityContext.writeTargets` is keyed by logical target IDs such as `calendar`, `calendarDate`, `repository`, `widget`, `roomRoot`, and `roomMessage`. Each target reports the current community section names and writable section names, so widgets should use these mappings instead of hard-coding section names.
+
+To query community-targeted events, request `community:queryTargetEvents` with logical target IDs. The host maps those IDs to the active community's sections and authorized writers before constructing relay filters:
+
+```typescript
+const res = await bridge.request('community:queryTargetEvents', {
+  targetIds: ['calendar', 'calendarDate'],
+  limit: 10,
+});
+```
+
+Declare `community:queryTargetEvents` as a `permission` tag when using this action. Use write target `canWrite` values to gate configuration controls only; do not hide already configured community content from readers just because they cannot write that target.
+
 ## Design Notes
 
-Community home slots can render richer card-style content. Message action and global menu slots should be designed for a short launcher label and a modal experience after click. Repository tab widgets can use the full available repository content area.
+Community home slots render inline iframe widgets and can show richer card-style content directly on the community home page. Message action and global menu slots should be designed for a short launcher label and a modal experience after click. Repository tab widgets can use the full available repository content area.

@@ -21,7 +21,7 @@
     "format:check": "prettier --check .",
     "clean": "pnpm -r clean && rm -rf node_modules",
     "verify": "pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm e2e",
-    "manifest:generate": "budabit-generate --title 'My Widget' --type tool --app-url '${WIDGET_APP_URL:-http://localhost:5173}' --fallback-app-urls '${WIDGET_FALLBACK_APP_URLS:-}' --icon 'Sparkles' --image 'https://example.com/preview.png' --identifier 'my-widget' --version '0.1.0' --changelog 'Initial release' --permissions 'nostr:publish,nostr:query,nostr:subscribe,ui:toast'",
+    "manifest:generate": "budabit-generate --title 'My Widget' --type tool --app-url '${WIDGET_APP_URL:-http://localhost:5173}' --fallback-app-urls '${WIDGET_FALLBACK_APP_URLS:-}' --icon 'Sparkles' --image 'https://example.com/preview.png' --identifier 'my-widget' --version '0.1.0' --changelog 'Initial release' --permissions 'nostr:publish,nostr:query,nostr:subscribe,community:queryTargetEvents,ui:toast'",
     "manifest:publish": "budabit-publish",
     "widget:build": "pnpm build && pnpm manifest:generate",
     "widget:publish": "pnpm widget:build && pnpm manifest:publish",

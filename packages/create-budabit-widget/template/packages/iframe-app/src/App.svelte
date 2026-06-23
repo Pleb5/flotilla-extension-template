@@ -6,18 +6,37 @@
     type UnsignedEvent,
     type WidgetInitPayload,
     type RepoContext,
+    type CommunityWidgetContext,
+    type NostrEvent,
   } from 'budabit-sdk';
 
   // Bridge + host-provided context
   let bridge = $state<WidgetBridge | null>(null);
   let initPayload = $state<WidgetInitPayload | null>(null);
   let repoContext = $state<RepoContext | null>(null);
+  let communityContext = $state<CommunityWidgetContext | null>(null);
 
   // UI state
   let note = $state('');
   let status = $state('Initializing Smart Widget...');
   let lastPublishResult = $state<string | null>(null);
   let lastError = $state<string | null>(null);
+  let communityQueryStatus = $state<string | null>(null);
+  let communityEvents = $state<NostrEvent[]>([]);
+  const canConfigureCalendar = $derived(
+    Boolean(
+      communityContext?.writeTargets.calendar?.canWrite ||
+        communityContext?.writeTargets.calendarDate?.canWrite
+    )
+  );
+  const calendarSectionNames = $derived(
+    Array.from(
+      new Set([
+        ...(communityContext?.writeTargets.calendar?.sectionNames ?? []),
+        ...(communityContext?.writeTargets.calendarDate?.sectionNames ?? []),
+      ])
+    )
+  );
 
   // Initialize bridge and set up handlers
   $effect(() => {
@@ -35,8 +54,11 @@
     // Listen for widget:init (new lifecycle event)
     const offInit = b.onEvent('widget:init', (payload) => {
       initPayload = payload as WidgetInitPayload | null;
+      communityContext = initPayload?.communityContext ?? null;
       const ver = initPayload?.hostVersion ?? 'unknown';
-      status = `Connected (host v${ver})`;
+      status = communityContext
+        ? `Connected (host v${ver}) — community context ready`
+        : `Connected (host v${ver})`;
     });
 
     // Listen for repo context updates (for repo-scoped extensions)
@@ -142,6 +164,34 @@
       // Resize is best-effort
     }
   }
+
+  async function queryCommunityCalendarTargets(): Promise<void> {
+    if (!bridge || !communityContext) return;
+
+    communityQueryStatus = 'Querying community calendar targets...';
+    communityEvents = [];
+    lastError = null;
+
+    try {
+      const res = await bridge.request('community:queryTargetEvents', {
+        targetIds: ['calendar', 'calendarDate'],
+        limit: 10,
+      });
+
+      if (res && typeof res === 'object' && 'error' in res && typeof res.error === 'string') {
+        lastError = res.error;
+        communityQueryStatus = `Community query failed: ${res.error}`;
+        return;
+      }
+
+      communityEvents = 'events' in res && Array.isArray(res.events) ? res.events : [];
+      communityQueryStatus = `Loaded ${communityEvents.length} community target event(s)`;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      lastError = msg;
+      communityQueryStatus = `Community query failed: ${msg}`;
+    }
+  }
 </script>
 
 <div class="container">
@@ -180,6 +230,24 @@
           <dt>Relays:</dt>
           <dd>{repoContext.repoRelays.join(', ')}</dd>
         </dl>
+      {/if}
+
+      {#if communityContext}
+        <h3>Community Context</h3>
+        <dl>
+          <dt>Community:</dt>
+          <dd class="pubkey">{communityContext.pubkey}</dd>
+          <dt>Relays:</dt>
+          <dd>{communityContext.relays.join(', ') || 'none'}</dd>
+          <dt>Calendar sections:</dt>
+          <dd>{calendarSectionNames.join(', ') || 'not configured'}</dd>
+          <dt>Calendar config access:</dt>
+          <dd>{canConfigureCalendar ? 'yes' : 'no'}</dd>
+        </dl>
+        <p class="hint">
+          Use write target capabilities for configuration gates. Do not hide already configured
+          community content from readers just because they cannot write that target.
+        </p>
       {/if}
 
       <details class="context-raw">
@@ -229,6 +297,27 @@
           Resize to 400px (ui:resize)
         </button>
       </div>
+    </div>
+
+    <div class="action-group">
+      <h3>Community Target Query</h3>
+      <p class="hint">
+        This asks the host for events by logical target IDs. The host maps those IDs to the
+        active community's renamed sections and authorized writers before querying relays.
+      </p>
+      <button onclick={queryCommunityCalendarTargets} disabled={!bridge || !communityContext}>
+        Query Calendar Targets
+      </button>
+      {#if communityQueryStatus}
+        <p class="result">{communityQueryStatus}</p>
+      {/if}
+      {#if communityEvents.length > 0}
+        <ul class="event-list">
+          {#each communityEvents as event (event.id)}
+            <li>{event.kind}: {event.id}</li>
+          {/each}
+        </ul>
+      {/if}
     </div>
 
     {#if lastError}
@@ -387,6 +476,20 @@
     margin: 0.75rem 0 0 0;
     color: #333;
     font-size: 0.95rem;
+  }
+
+  .hint {
+    margin: 0.75rem 0;
+    color: #666;
+    font-size: 0.9rem;
+    line-height: 1.4;
+  }
+
+  .event-list {
+    margin: 0.75rem 0 0 0;
+    padding-left: 1.25rem;
+    color: #333;
+    font-size: 0.9rem;
   }
 
   .error {

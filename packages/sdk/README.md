@@ -48,7 +48,7 @@ npx budabit-generate \
   --app-url 'https://cdn.example.com/my-widget/index.html' \
   --icon 'https://cdn.example.com/my-widget/icon.png' \
   --image 'https://cdn.example.com/my-widget/preview.png' \
-  --permissions 'nostr:publish,nostr:query,nostr:subscribe,ui:toast' \
+  --permissions 'nostr:publish,nostr:query,nostr:subscribe,community:queryTargetEvents,ui:toast' \
   --nostr-kinds '30301,30302'
 ```
 
