@@ -51,6 +51,7 @@ pnpm manifest:generate \
   --type tool \
   --title "My Smart Widget" \
   --app-url "https://cdn.example.com/my-widget/index.html" \
+  --fallback-app-urls "https://mirror.example.com/my-widget/index.html" \
   --icon "https://cdn.example.com/my-widget/icon.png" \
   --image "https://cdn.example.com/my-widget/preview.png" \
   --button-title "Open" \
@@ -67,6 +68,7 @@ Notes:
 - `--type` should be `tool` (bidirectional) or `action` (one-way UX).
 - `--identifier` is optional for local experiments, but public release workflows should set an explicit stable value and reuse it for every update.
 - `--version` and `--changelog` are optional release metadata shown by BudaBit when an installed widget update is available.
+- `--fallback-app-urls` is optional. Use it for Blossom mirrors or other HTTPS artifact URLs; BudaBit tries them if the primary URL fails.
 - `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
 - `--nostr-kinds` declares which Nostr event kinds your widget needs to query/subscribe to.
 - `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions.
@@ -241,7 +243,7 @@ Create `host-test.html` next to the repo root and open it in your browser:
 ### Key patterns
 
 ```typescript
-import { WidgetBridge } from 'budabit-sdk'
+import { WidgetBridge } from '@budabit/ext-shared'
 
 const bridge = new WidgetBridge()
 

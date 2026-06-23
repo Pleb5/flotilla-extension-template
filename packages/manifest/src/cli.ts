@@ -18,6 +18,7 @@ import type { WidgetPermission } from '@budabit/ext-shared';
 export interface CLIOptions {
   type: SmartWidgetType;
   appUrl: string;
+  fallbackAppUrls?: string;
   icon: string;
   image: string;
   buttonTitle: string;
@@ -48,6 +49,14 @@ function parseNostrKinds(csv: string | undefined): number[] {
     .split(',')
     .map((s) => parseInt(s.trim(), 10))
     .filter((n) => Number.isFinite(n) && n >= 0);
+}
+
+function parseFallbackAppUrls(value: string | undefined): string[] {
+  if (!value) return [];
+  return value
+    .split(/[\n,]/)
+    .map((url) => url.trim())
+    .filter(Boolean);
 }
 
 function getIdentifierFromEventTags(tags: string[][]): string {
@@ -107,6 +116,7 @@ program
   )
   .requiredOption('--title <title>', 'Widget title (maps to event.content)')
   .requiredOption('--app-url <url>', 'Iframe app URL (maps to button tag of type app)')
+  .option('--fallback-app-urls <urls>', 'Comma- or newline-separated fallback iframe app URLs')
   .requiredOption('--icon <url>', 'Icon URL (maps to icon tag; required for action/tool widgets)')
   .requiredOption('--image <url>', 'Image URL (maps to image tag; required)')
   .option('--button-title <title>', 'Button label (maps to button tag label)', 'Open')
@@ -134,6 +144,7 @@ program
     try {
       const permissions = parsePermissions(options.permissions);
       const slot = buildSlotConfig(options);
+      const fallbackAppUrls = parseFallbackAppUrls(options.fallbackAppUrls);
 
       const nostrKinds = parseNostrKinds(options.nostrKinds);
 
@@ -144,6 +155,7 @@ program
         imageUrl: options.image,
         iconUrl: options.icon,
         appUrl: options.appUrl,
+        fallbackAppUrls,
         buttonTitle: options.buttonTitle,
         version: options.version,
         changelog: options.changelog,
@@ -188,6 +200,7 @@ program
       if (options.version?.trim()) console.log(`🏷️  Version: ${options.version.trim()}`);
       if (options.changelog?.trim()) console.log(`📝 Changelog: ${options.changelog.trim()}`);
       console.log(`🌐 App URL: ${options.appUrl}`);
+      if (fallbackAppUrls.length > 0) console.log(`🪞 Fallback app URLs: ${fallbackAppUrls.length}`);
       console.log(`📡 Relay targets: ${DEFAULT_SMART_WIDGET_RELAYS.join(', ')}\n`);
       console.log(`📄 Event (unsigned): ${eventPath}`);
       console.log(`🪪 widget.json: ${widgetJsonPath}`);

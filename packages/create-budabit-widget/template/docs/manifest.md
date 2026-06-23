@@ -52,6 +52,7 @@ Example:
     ["icon", "https://cdn.example.com/my-widget/icon.png"],
     ["image", "https://cdn.example.com/my-widget/preview.png"],
     ["button", "Open", "app", "https://cdn.example.com/my-widget/index.html"],
+    ["app-url", "https://mirror.example.com/my-widget/index.html"],
     ["permission", "nostr:publish"],
     ["permission", "nostr:query"],
     ["permission", "nostr:subscribe"],
@@ -95,6 +96,13 @@ Declares how the host launches the widget UI.
 Notes:
 - The `app` URL should be **HTTPS** in production.
 - The host typically derives the widget origin from this URL and validates `postMessage` origins against it.
+
+#### `app-url` (Fallback launch URL)
+
+Optional repeatable fallback iframe URLs. BudaBit preserves the first `button`/`app` URL as the primary URL and tries ordered `app-url` fallbacks if iframe loading fails.
+
+- **Expected shape**: `["app-url", "<url>"]`
+- **Example**: `["app-url", "https://mirror.example.com/my-widget/index.html"]`
 
 ### Recommended tags
 
@@ -168,6 +176,7 @@ pnpm manifest:generate \
   --type tool \
   --title "My Smart Widget" \
   --app-url "https://cdn.example.com/my-widget/index.html" \
+  --fallback-app-urls "https://mirror.example.com/my-widget/index.html" \
   --icon "https://cdn.example.com/my-widget/icon.png" \
   --image "https://cdn.example.com/my-widget/preview.png" \
   --button-title "Open" \
@@ -183,6 +192,7 @@ Optional:
 - `--identifier "my-smart-widget"` (strongly recommended for public releases; if omitted, derived for local experiments)
 - `--version "1.0.0"` (optional update display metadata)
 - `--changelog "Initial release"` (optional update display metadata)
+- `--fallback-app-urls "https://mirror.example.com/widget.html,https://backup.example.com/widget.html"` (optional ordered fallback artifact URLs)
 - `--pubkey "<hex pubkey>"` (if provided, publishing instructions can include an `naddr` hint)
 - `--nostr-kinds "30301,30302"` (declares which Nostr event kinds the widget needs)
 

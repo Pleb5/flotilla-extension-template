@@ -1,6 +1,14 @@
-# My BudaBit Widget
+# BudaBit Smart Widget Template
 
-A [BudaBit](https://budabit.com) Smart Widget extension.
+Reusable starter template for building BudaBit **Smart Widgets**.
+
+This template provides a production-ready foundation for creating **iframe-based Smart Widgets** that integrate with BudaBit using:
+
+- A **Smart Widget event** published to Nostr (kind `30033`)
+- A **sandboxed iframe UI** (Svelte 5)
+- A **typed, action-based postMessage bridge** compatible with BudaBit
+
+> **Note:** This template is specifically for **Smart Widgets (kind 30033)**. BudaBit also supports **NIP-89 Manifest Extensions (kind 31990)**, which use a different discovery and registration model. For NIP-89 extensions, see the [BudaBit Extension Developer Guide](../../docs/extensions/README.md) which covers both extension types comprehensively.
 
 ## What is a Smart Widget?
 
@@ -16,47 +24,108 @@ A BudaBit Smart Widget is represented on Nostr as a **kind `30033` addressable e
 
 BudaBit discovers and renders widgets based on these events and enforces privileged actions based on declared permissions.
 
+## Template Features
+
+- Svelte 5 iframe app example (Smart Widget "tool" pattern)
+- Framework-agnostic shared bridge package with `signalReady()` and `subscribe()` helpers
+- TypeScript strict mode
+- Monorepo via pnpm workspaces
+- Unit tests (Vitest) + E2E tests (Playwright)
+- Smart Widget generator CLI (outputs kind `30033` event with `nostrKinds` + optional `/.well-known/widget.json`)
+- Dual-protocol: works with BudaBit bridge and Smart Widget Handler hosts
+
 ## Quick Start
+
+### Bootstrap a new project (recommended)
+
+```bash
+npx create-budabit-widget my-widget
+```
+
+This scaffolds a fresh copy with your project name, description, and dependencies pre-installed.
+
+### Or clone and install manually
+
+### 1) Install
 
 ```bash
 pnpm install
-pnpm dev        # Start dev server at http://localhost:5173
-pnpm build      # Build for production
-pnpm test       # Run unit tests
-pnpm e2e        # Run end-to-end tests
-pnpm verify     # Full CI: lint → typecheck → coverage → e2e
 ```
 
-## Bridge Protocol
+### 2) Run the iframe app locally
 
-BudaBit uses an action-based postMessage protocol between the host and your widget iframe:
+```bash
+pnpm dev
+```
 
-- Widget → Host requests: `{ type: 'request', id, action, payload }`
-- Host → Widget responses: `{ type: 'response', id, action, payload }`
-- Host → Widget events: `{ type: 'event', action, payload }`
+The widget iframe app will be available at `http://localhost:5173`.
 
-The `budabit-sdk` provides a typed `WidgetBridge` with:
+### 3) Build
 
-- `request(action, payload) → Promise<responsePayload>`
+```bash
+pnpm build
+```
+
+### 4) Generate Smart Widget files (kind 30033)
+
+This writes:
+- `dist/widget/event.json` (unsigned kind `30033` event)
+- `dist/widget/widget.json` (optional `/.well-known/widget.json` file)
+- `dist/widget/PUBLISHING.md` (signing + publishing instructions)
+
+```bash
+pnpm manifest:generate \
+  --type tool \
+  --title 'My Smart Widget' \
+  --app-url 'https://cdn.example.com/my-widget/index.html' \
+  --fallback-app-urls 'https://mirror.example.com/my-widget/index.html' \
+  --icon 'https://cdn.example.com/my-widget/icon.png' \
+  --image 'https://cdn.example.com/my-widget/preview.png' \
+  --button-title 'Open' \
+  --identifier 'my-smart-widget' \
+  --version '1.0.0' \
+  --changelog 'Initial release' \
+  --permissions 'nostr:publish,nostr:query,nostr:subscribe,ui:toast' \
+  --nostr-kinds '30301,30302'
+```
+
+Notes:
+- `--identifier` is optional for local experiments, but public releases should use an explicit stable value and reuse it for every update.
+- `--version` and `--changelog` are optional release metadata shown by BudaBit update UI.
+- `--fallback-app-urls` is optional. Use it for Blossom mirror URLs or other HTTPS artifact mirrors; BudaBit tries them if the primary iframe URL fails.
+- `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
+- `--nostr-kinds` declares which Nostr event kinds your widget needs.
+- `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions.
+
+## Bridge Protocol (Action-Based)
+
+BudaBit uses an action-based postMessage protocol:
+
+- Widget -> Host requests:
+  - `{ type: 'request', id, action, payload }`
+- Host -> Widget responses:
+  - `{ type: 'response', id, action, payload }`
+- Host -> Widget events:
+  - `{ type: 'event', action, payload }`
+
+This template’s shared package provides a typed `WidgetBridge` with:
+
+- `request(action, payload) -> Promise<responsePayload>`
 - `onEvent(action, handler)` for host-initiated events (lifecycle: `widget:init`, `widget:mounted`, `widget:unmounting`)
-- `onRequest(action, handler)` for bidirectional "tool" widgets
+- `onRequest(action, handler)` for bidirectional "tool" widgets (host can request work from the iframe)
 
 ### Example: publish a note + show a toast
 
 ```ts
-import { createWidgetBridge, createEvent } from 'budabit-sdk';
+import { WidgetBridge, createEvent } from 'budabit-sdk';
 
-const bridge = createWidgetBridge({
-  targetWindow: window.parent,
-  targetOrigin: '*',
-  timeoutMs: 15000,
-});
+const bridge = new WidgetBridge();
 
 async function publishNote(content: string) {
   const event = createEvent(1, content, []);
   const res = await bridge.request('nostr:publish', event);
 
-  if (res && typeof res === 'object' && 'error' in res) {
+  if ('error' in res) {
     await bridge.request('ui:toast', { message: res.error, type: 'error' });
     return;
   }
@@ -65,7 +134,7 @@ async function publishNote(content: string) {
 }
 ```
 
-### Lifecycle Events
+### Handle lifecycle events
 
 The host sends lifecycle events at key moments:
 
@@ -74,80 +143,124 @@ The host sends lifecycle events at key moments:
 bridge.onEvent('widget:init', (payload) => {
   console.log('Extension ID:', payload.extensionId);
   console.log('Host version:', payload.hostVersion);
+  if (payload.repoContext) {
+    console.log('Repository:', payload.repoContext.fullName);
+  }
 });
 
 // Know when bridge is ready for operations
 bridge.onEvent('widget:mounted', (payload) => {
   console.log('Mounted at:', payload.mountedAt);
+  initializeWidget();
 });
 
 // Cleanup before removal
 bridge.onEvent('widget:unmounting', (payload) => {
   console.log('Unmounting, reason:', payload.reason);
+  saveState();
   bridge.destroy();
 });
 ```
 
+For repository context changes, handle `context:repoUpdate`. To proactively fetch context, use `bridge.request('context:getRepo', {})`.
+
 ## Permissions
 
-Smart Widgets declare permissions using `permission` tags. This project defaults to:
+Smart Widgets can declare permissions using `permission` tags (one per permission). This template defaults to:
 
-- `nostr:publish` — Publish Nostr events
-- `nostr:query` — Query events from relays
-- `nostr:subscribe` — Real-time relay subscriptions
-- `ui:toast` — Show toast notifications (rate-limited, no explicit permission needed)
+- `nostr:publish`
+- `ui:toast`
 
-Declare which event kinds your widget needs via `nostrKinds` tags.
+Privileged actions (`nostr:*`, `storage:*`) require explicit permission tags. `ui:*` actions are rate-limited but don't require explicit permission.
 
-## Project Structure
+Additionally, declare which event kinds your widget needs via `nostrKinds` tags:
+
+```json
+["nostrKinds", "30301"]
+["nostrKinds", "30302"]
+```
+
+Only declared kinds (plus profiles and relay lists) can be queried/subscribed.
+
+## Project Structure (Monorepo)
 
 ```
-my-widget/
+budabit-extension-template/
 ├── packages/
-│   └── iframe-app/      # Svelte 5 iframe app (your widget UI)
-│       └── src/
-│           ├── App.svelte
-│           └── main.ts
-├── docs/                # Architecture and integration guides
+│   ├── shared/          # Framework-agnostic bridge + types + signaling helpers
+│   ├── iframe-app/      # Svelte 5 iframe app (Smart Widget tool demo)
+│   ├── worker/          # Optional stubbed worker bridge (action protocol)
+│   ├── manifest/        # CLI: generates kind 30033 + widget.json + instructions
+│   └── test-utils/      # Mocks for bridge/testing
+├── docs/                # Documentation (Smart Widget-focused)
 ├── e2e/                 # Playwright E2E tests
-├── .github/workflows/   # CI pipeline
-└── [config files]
+└── [config files]       # ESLint, Prettier, TypeScript, etc.
 ```
 
-Your widget code lives in `packages/iframe-app/`. The `budabit-sdk` package provides the bridge, types, manifest CLI, and test utilities.
+## Package Overview
 
-### SDK Subpath Imports
+### `budabit-sdk`
+
+The SDK provides everything you need to build a Smart Widget:
 
 | Import | Contents |
 |--------|----------|
-| `budabit-sdk` | Types, WidgetBridge, signaling helpers |
+| `budabit-sdk` | Types, `WidgetBridge`, `createWidgetBridge()`, signaling helpers (`createEvent`, `validateEvent`) |
 | `budabit-sdk/manifest` | Event generator, CLI utilities |
-| `budabit-sdk/testing` | MockWidgetBridge, test helpers |
-| `budabit-sdk/worker` | Worker bridge |
+| `budabit-sdk/testing` | `MockWidgetBridge`, test helpers |
+| `budabit-sdk/worker` | Worker bridge for headless extensions |
+
+### `iframe-app`
+
+Svelte 5 iframe app demonstrating a Smart Widget "tool":
+
+- Calls host actions via `bridge.request('nostr:publish', ...)`
+- Calls UI actions via `bridge.request('ui:toast', ...)`
+- Handles lifecycle events: `widget:init`, `widget:mounted`, `widget:unmounting`
+- Handles `context:repoUpdate` for repository context changes
+
+## Common Commands
+
+```bash
+pnpm dev
+pnpm build
+pnpm test
+pnpm test:coverage
+pnpm e2e
+pnpm verify
+pnpm manifest:generate
+```
 
 ## Publishing
 
-### Generate Manifest
-
-```bash
-pnpm manifest:generate --identifier 'my-widget' --version '1.0.0' --changelog 'Initial release'
-```
-
-This generates a kind `30033` event JSON in `dist/widget/`.
-Use an explicit stable `--identifier` for public releases and reuse it for every update.
-
 ### Quick Publish to Blossom
 
+The easiest way to publish your widget is using Blossom servers:
+
 ```bash
+# Set your Nostr secret key
 export NOSTR_SK=your_secret_key_hex
 
 # Build, upload to Blossom, sign, and publish to relays
 pnpm widget:publish:blossom
 ```
 
+This will:
+1. Build all packages
+2. Generate the manifest
+3. Upload `index.html` to Blossom (before signing)
+4. Update the event's primary app URL with the first Blossom URL and preserve additional Blossom uploads as `app-url` fallbacks
+5. Sign the event with your key
+6. Publish to Nostr relays
+7. Print the installable `naddr`
+
 For repeat releases, keep the same `--identifier`, update `--version` / `--changelog`, and publish a newer kind `30033` event. BudaBit uses the same publisher pubkey + kind `30033` + same `d` identifier as one widget line and shows installed users a manual update.
 
+To target one or more BudaBit communities, publish the widget event to relays reachable by those communities, then curate it through BudaBit's community widget publisher or targeted-publication tooling from an account with widget-write permission in each community.
+
 ### Publish to GitHub Releases
+
+Alternatively, publish via GitHub releases:
 
 ```bash
 export NOSTR_SK=your_secret_key_hex
@@ -158,48 +271,63 @@ export GITHUB_TOKEN=your_github_token
 pnpm widget:publish:github
 ```
 
-### Manual Publishing
+### Manual Publishing (Advanced)
 
-1. Build: `pnpm build`
-2. Host `packages/iframe-app/dist/index.html` on HTTPS
-3. Generate manifest: `pnpm manifest:generate --app-url 'https://your-cdn.com/widget/index.html' --identifier 'my-widget' --version '1.0.0' --changelog 'Initial release'`
-4. Sign and publish the kind `30033` event (see `dist/widget/PUBLISHING.md`)
-
-### Publishing Commands
-
-| Command | Description |
-|---------|-------------|
-| `pnpm widget:build` | Build + generate manifest |
-| `pnpm widget:publish` | Build + generate + publish to relays |
-| `pnpm widget:publish:dry-run` | Full pipeline without publishing |
-| `pnpm widget:publish:blossom` | Upload to Blossom CDN + publish |
-| `pnpm widget:publish:github` | Upload to GitHub release + publish |
-
-## Testing
-
+1) Build the iframe app:
 ```bash
-pnpm test              # Unit tests
-pnpm test:watch        # Watch mode
-pnpm test:coverage     # With coverage report
-pnpm test:ui           # Interactive Vitest UI
-pnpm e2e               # Playwright E2E tests
-pnpm e2e:headed        # E2E in headed browser
-pnpm e2e:debug         # E2E debug mode
+pnpm build
 ```
+
+2) Host the iframe HTML somewhere reachable by BudaBit (typically on HTTPS):
+- `packages/iframe-app/dist/index.html`
+
+3) Generate Smart Widget files:
+```bash
+pnpm manifest:generate \
+  --type tool \
+  --title 'My Smart Widget' \
+  --app-url 'https://cdn.example.com/my-widget/index.html' \
+  --fallback-app-urls 'https://mirror.example.com/my-widget/index.html' \
+  --icon 'Sparkles' \
+  --image 'https://cdn.example.com/my-widget/preview.png' \
+  --identifier 'my-widget' \
+  --version '1.0.0' \
+  --changelog 'Initial release' \
+  --permissions 'nostr:publish,ui:toast'
+```
+
+4) Sign and publish the generated kind `30033` event using `nostr-tools` (see `dist/widget/PUBLISHING.md`).
+
+### Publishing Options
+
+- `widget:publish:dry-run` - Test without publishing
+- `widget:publish:blossom` - Publish to Blossom + Nostr relays
+- `widget:publish:github` - Publish to GitHub releases + Nostr relays
+- `widget:publish` - Manual publish (requires pre-hosted artifact)
 
 ## Documentation
 
-See `docs/` for detailed guides:
+Smart Widget docs live in `docs/` and cover:
+- [Architecture](./docs/architecture.md) - System design and package structure
+- [Host Bridge](./docs/host-bridge.md) - Host integration guide
+- [Lifecycle Events](./docs/lifecycle.md) - Widget initialization, mount, and cleanup
+- [Storage API](./docs/storage.md) - Persistent data storage
+- [Slot System](./docs/slots.md) - Where widgets can be mounted
+- [Manifest](./docs/manifest.md) - Kind 30033 event structure
+- [Security](./docs/security.md) - Security guidelines
+- [Quick Start](./docs/quickstart.md) - Getting started guide
 
-- [Architecture](./docs/architecture.md) — System design
-- [Host Bridge](./docs/host-bridge.md) — Host integration guide
-- [Lifecycle Events](./docs/lifecycle.md) — Widget init, mount, cleanup
-- [Storage API](./docs/storage.md) — Persistent data storage
-- [Slot System](./docs/slots.md) — Where widgets can be mounted
-- [Manifest](./docs/manifest.md) — Kind 30033 event structure
-- [Security](./docs/security.md) — Security guidelines
-- [Quick Start](./docs/quickstart.md) — Getting started
+### Extension Types in BudaBit
+
+BudaBit supports two complementary extension models:
+
+| Model | Event Kind | Discovery | Use Case |
+|-------|-----------|-----------|----------|
+| **Smart Widgets** (this template) | 30033 | YakiHonne relays | Rich, event-based widgets rendered inline or in iframes |
+| **NIP-89 Manifest Extensions** | 31990 | INDEXER_RELAYS or HTTPS URL | Full iframe apps with JSON manifests |
+
+For comprehensive documentation covering both models, including migration guidance and interoperability, see the [BudaBit Extension Developer Guide](../../docs/extensions/README.md).
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) file for details.

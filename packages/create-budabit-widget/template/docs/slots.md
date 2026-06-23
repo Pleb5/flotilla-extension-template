@@ -16,6 +16,8 @@ BudaBit Smart Widgets can declare one supported slot in their kind `30033` manif
 
 `global-menu` is global only within targeted community routes. It is not displayed on unrelated BudaBit routes.
 
+Community-targeted widgets only appear in communities where a widget-write-authorized account has curated the widget with a targeted publication. Use BudaBit's community widget publisher for multi-community targeting; it only exposes communities where the current account can write widget targets.
+
 ## Manifest Examples
 
 ### Repository Tab

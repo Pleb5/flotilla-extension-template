@@ -40,6 +40,8 @@ export interface SmartWidgetEventOptions {
   iconUrl: string;
   /** Iframe app URL (maps to the `button` tag of type `app`). */
   appUrl: string;
+  /** Ordered fallback iframe app URLs (maps to repeatable `app-url` tags). */
+  fallbackAppUrls?: string[];
   /** Button label (maps to the `button` tag label). */
   buttonTitle: string;
   /** Optional release version metadata (maps to the `version` tag). */
@@ -79,6 +81,7 @@ function deriveIdentifier(title: string, appUrl: string): string {
  * - ["image", imageUrl]
  * - ["icon", iconUrl]
  * - ["button", buttonTitle, "app", appUrl]
+ * - ["app-url", fallbackAppUrl] (repeatable fallback URLs)
  * - ["version", version] (optional)
  * - ["changelog", changelog] (optional)
  * - ["permission", "nostr:publish"] (repeatable)
@@ -87,6 +90,9 @@ export function generateSmartWidgetEvent(options: SmartWidgetEventOptions): Smar
   const identifier = options.identifier?.trim() || deriveIdentifier(options.title, options.appUrl);
   const version = options.version?.trim();
   const changelog = options.changelog?.trim();
+  const fallbackAppUrls = Array.from(
+    new Set((options.fallbackAppUrls ?? []).map((url) => url.trim()).filter(Boolean))
+  ).filter((url) => url !== options.appUrl);
 
   const tags: string[][] = [
     ['d', identifier],
@@ -95,6 +101,10 @@ export function generateSmartWidgetEvent(options: SmartWidgetEventOptions): Smar
     ['icon', options.iconUrl],
     ['button', options.buttonTitle, 'app', options.appUrl],
   ];
+
+  for (const url of fallbackAppUrls) {
+    tags.push(['app-url', url]);
+  }
 
   if (version) tags.push(['version', version]);
   if (changelog) tags.push(['changelog', changelog]);
@@ -243,13 +253,14 @@ console.log('naddr:', naddr);
 ## Stable Release Workflow
 
 - Pick an explicit, stable \`--identifier\` for the widget line before your first public release.
-- Build the iframe app, upload the built HTML to Blossom, then publish a new kind \`30033\` event that points its \`button\`/\`app\` URL at that Blossom URL.
+- Build the iframe app, upload the built HTML to Blossom, then publish a new kind \`30033\` event that points its \`button\`/\`app\` URL at the primary Blossom URL.
+- Preserve additional Blossom mirror URLs with repeatable \`app-url\` fallback tags so BudaBit can try another artifact URL if the primary iframe URL fails.
 - For each release, reuse the same \`d\` identifier, publish a newer event with a newer \`created_at\`, and update optional \`version\` / \`changelog\` tags.
 - BudaBit treats the same pubkey + kind \`30033\` + same \`d\` value as the same widget line. Installed users see update availability and manually apply the newer event.
 
 ## Notes
 
-- For \`action\`/ \`tool\` widgets, BudaBit extracts the iframe URL from the first \`button\` tag with type \`app\`.
+- For \`action\`/ \`tool\` widgets, BudaBit extracts the primary iframe URL from the first \`button\` tag with type \`app\` and fallbacks from repeatable \`app-url\` tags.
 - Permissions are read from \`permission\` (or \`perm\`) tags and compared to requested bridge actions (e.g., \`nostr:publish\`).
 `;
 }

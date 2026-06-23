@@ -72,6 +72,22 @@ describe('generateSmartWidgetEvent()', () => {
     expect(event.tags).toContainEqual(['changelog', 'Add Blossom-backed release metadata']);
   });
 
+  it('should add ordered fallback app-url tags', () => {
+    const event = generateSmartWidgetEvent({
+      ...baseOptions,
+      fallbackAppUrls: [
+        'https://cdn.example.com/app/index.html',
+        'https://cdn.example.com/app/index.html',
+        'https://mirror.example.com/app/index.html',
+      ],
+    });
+
+    expect(event.tags.filter((t) => t[0] === 'app-url')).toEqual([
+      ['app-url', 'https://cdn.example.com/app/index.html'],
+      ['app-url', 'https://mirror.example.com/app/index.html'],
+    ]);
+  });
+
   it('should generate different identifiers for different inputs', () => {
     const event1 = generateSmartWidgetEvent(baseOptions);
     const event2 = generateSmartWidgetEvent({ ...baseOptions, title: 'Other Widget' });

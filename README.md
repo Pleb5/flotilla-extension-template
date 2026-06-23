@@ -78,6 +78,7 @@ pnpm manifest:generate \
   --type tool \
   --title 'My Smart Widget' \
   --app-url 'https://cdn.example.com/my-widget/index.html' \
+  --fallback-app-urls 'https://mirror.example.com/my-widget/index.html' \
   --icon 'https://cdn.example.com/my-widget/icon.png' \
   --image 'https://cdn.example.com/my-widget/preview.png' \
   --button-title 'Open' \
@@ -91,6 +92,7 @@ pnpm manifest:generate \
 Notes:
 - `--identifier` is optional for local experiments, but public releases should use an explicit stable value and reuse it for every update.
 - `--version` and `--changelog` are optional release metadata shown by BudaBit update UI.
+- `--fallback-app-urls` is optional. Use it for Blossom mirror URLs or other HTTPS artifact mirrors; BudaBit tries them if the primary iframe URL fails.
 - `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
 - `--nostr-kinds` declares which Nostr event kinds your widget needs.
 - `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions.
@@ -247,12 +249,14 @@ This will:
 1. Build all packages
 2. Generate the manifest
 3. Upload `index.html` to Blossom (before signing)
-4. Update the event's app URL with the Blossom URL
+4. Update the event's primary app URL with the first Blossom URL and preserve additional Blossom uploads as `app-url` fallbacks
 5. Sign the event with your key
 6. Publish to Nostr relays
-7. Upload to Blossom again for redundancy
+7. Print the installable `naddr`
 
 For repeat releases, keep the same `--identifier`, update `--version` / `--changelog`, and publish a newer kind `30033` event. BudaBit uses the same publisher pubkey + kind `30033` + same `d` identifier as one widget line and shows installed users a manual update.
+
+To target one or more BudaBit communities, publish the widget event to relays reachable by those communities, then curate it through BudaBit's community widget publisher or targeted-publication tooling from an account with widget-write permission in each community.
 
 ### Publish to GitHub Releases
 
@@ -283,6 +287,7 @@ pnpm manifest:generate \
   --type tool \
   --title 'My Smart Widget' \
   --app-url 'https://cdn.example.com/my-widget/index.html' \
+  --fallback-app-urls 'https://mirror.example.com/my-widget/index.html' \
   --icon 'Sparkles' \
   --image 'https://cdn.example.com/my-widget/preview.png' \
   --identifier 'my-widget' \

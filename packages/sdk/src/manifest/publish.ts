@@ -42,17 +42,26 @@ function getEventAppUrl(event: { tags?: unknown }): string | undefined {
   return getEventTags(event).find((tag) => tag[0] === 'button' && tag[2] === 'app')?.[3];
 }
 
+function getEventAppUrls(event: { tags?: unknown }): string[] {
+  return [
+    getEventAppUrl(event),
+    ...getEventTags(event).filter((tag) => tag[0] === 'app-url').map((tag) => tag[1]),
+  ].filter((url): url is string => Boolean(url));
+}
+
 function logReleasePreview(event: { tags?: unknown }, relays: string[]): void {
   const identifier = getTagValue(event, 'd') || '(missing)';
   const version = getTagValue(event, 'version');
   const changelog = getTagValue(event, 'changelog');
   const appUrl = getEventAppUrl(event) || '(missing)';
+  const fallbackCount = Math.max(0, getEventAppUrls(event).length - 1);
 
   console.log('\n📋 Release preview:');
   console.log(`   Identifier (d): ${identifier}`);
   if (version) console.log(`   Version: ${version}`);
   if (changelog) console.log(`   Changelog: ${changelog}`);
   console.log(`   App URL: ${appUrl}`);
+  if (fallbackCount > 0) console.log(`   Fallback app URLs: ${fallbackCount}`);
   console.log(`   Relay targets: ${relays.join(', ')}`);
 }
 
@@ -81,25 +90,37 @@ async function publishWithBunker(
   return { signedEvent, relays, client };
 }
 
-// Helper to update the app URL in the event's button tag
-function updateEventAppUrl(event: Record<string, unknown>, newAppUrl: string): void {
+// Helper to update the app URL in the event's button tag and preserve ordered fallbacks.
+function updateEventAppUrls(event: Record<string, unknown>, newAppUrls: string[]): void {
   if (!event.tags || !Array.isArray(event.tags)) {
     throw new Error('Event must have a tags array');
   }
+  const [primaryAppUrl, ...fallbackAppUrls] = Array.from(new Set(newAppUrls.filter(Boolean)));
+  if (!primaryAppUrl) throw new Error('At least one app URL is required');
+
   const tags = event.tags as string[][];
+  let updatedPrimary = false;
   for (let i = 0; i < tags.length; i++) {
     const tag = tags[i];
     if (!tag) continue;
     // Button tag format: ["button", label, type, url]
     if (tag[0] === 'button' && tag[2] === 'app') {
-      tags[i] = [tag[0] ?? 'button', tag[1] ?? 'Open', tag[2] ?? 'app', newAppUrl];
-      console.log(`   🔗 Updated app URL in event: ${newAppUrl}`);
-      return;
+      tags[i] = [tag[0] ?? 'button', tag[1] ?? 'Open', tag[2] ?? 'app', primaryAppUrl];
+      updatedPrimary = true;
+      break;
     }
   }
-  // If no app button found, add one
-  tags.push(['button', 'Open', 'app', newAppUrl]);
-  console.log(`   🔗 Added app URL to event: ${newAppUrl}`);
+
+  if (!updatedPrimary) tags.push(['button', 'Open', 'app', primaryAppUrl]);
+
+  event.tags = tags
+    .filter((tag) => tag[0] !== 'app-url')
+    .concat(fallbackAppUrls.map((url) => ['app-url', url]));
+
+  console.log(`   🔗 Updated primary app URL in event: ${primaryAppUrl}`);
+  if (fallbackAppUrls.length > 0) {
+    console.log(`   🪞 Added fallback app URLs: ${fallbackAppUrls.length}`);
+  }
 }
 
 async function publishWidget(options: PublishOptions): Promise<void> {
@@ -117,7 +138,7 @@ async function publishWidget(options: PublishOptions): Promise<void> {
   const skHex = options.secretKey || process.env.NOSTR_SK || process.env.NOSTR_SECRET_KEY;
 
   // If uploadFirst is enabled, upload artifact and update event URL before signing
-  let uploadedArtifactUrl: string | undefined;
+  let uploadedArtifactUrls: string[] = [];
   let nip46ClientForSigning: Nip46Client | undefined;
   
   if (options.uploadFirst && (options.blossomServers?.length || (options.githubRepo && options.githubTag))) {
@@ -140,12 +161,10 @@ async function publishWidget(options: PublishOptions): Promise<void> {
           nip46Client: nip46ClientForSigning,
         });
         
-        if (results.length > 0 && results[0]) {
-          uploadedArtifactUrl = results[0].url;
-        }
+        uploadedArtifactUrls = results.map((result) => result.url).filter(Boolean);
       }
-      
-      if (!uploadedArtifactUrl && options.githubRepo && options.githubTag) {
+       
+      if (uploadedArtifactUrls.length === 0 && options.githubRepo && options.githubTag) {
         const token = options.githubToken || process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
         if (!token) {
           console.warn('⚠️  GitHub token required for GitHub upload. Skipping.');
@@ -162,12 +181,12 @@ async function publishWidget(options: PublishOptions): Promise<void> {
             filePath: artifactPath,
             token,
           });
-          uploadedArtifactUrl = result.url;
+          uploadedArtifactUrls = [result.url];
         }
       }
-      
-      if (uploadedArtifactUrl) {
-        updateEventAppUrl(unsignedEvent, uploadedArtifactUrl);
+       
+      if (uploadedArtifactUrls.length > 0) {
+        updateEventAppUrls(unsignedEvent, uploadedArtifactUrls);
         // Update created_at to current time since we modified the event
         unsignedEvent.created_at = Math.floor(Date.now() / 1000);
       } else {
@@ -278,6 +297,7 @@ async function publishWidget(options: PublishOptions): Promise<void> {
   const version = getTagValue(signedEvent, 'version');
   const changelog = getTagValue(signedEvent, 'changelog');
   const appUrl = getEventAppUrl(signedEvent);
+  const fallbackCount = Math.max(0, getEventAppUrls(signedEvent).length - 1);
   const naddr = nip19.naddrEncode({
     pubkey: signedEvent.pubkey,
     kind: 30033,
@@ -292,6 +312,7 @@ async function publishWidget(options: PublishOptions): Promise<void> {
   if (version) console.log(`   Version: ${version}`);
   if (changelog) console.log(`   Changelog: ${changelog}`);
   console.log(`   App URL: ${appUrl || '(missing)'}`);
+  if (fallbackCount > 0) console.log(`   Fallback app URLs: ${fallbackCount}`);
   console.log(`   Relay targets: ${relays.join(', ')}`);
   console.log(`\n🔗 naddr (use this to install in BudaBit):`);
   console.log(`   ${naddr}`);
