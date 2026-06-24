@@ -7,8 +7,17 @@
     type WidgetInitPayload,
     type RepoContext,
     type CommunityWidgetContext,
+    type CommunityEventDescriptor,
+    type CommunityWriteCapability,
     type NostrEvent,
   } from 'budabit-sdk';
+
+  const EVENT_DATE = 31922;
+  const EVENT_TIME = 31923;
+  const CALENDAR_DESCRIPTORS: CommunityEventDescriptor[] = [
+    { kind: EVENT_TIME },
+    { kind: EVENT_DATE },
+  ];
 
   // Bridge + host-provided context
   let bridge = $state<WidgetBridge | null>(null);
@@ -23,20 +32,46 @@
   let lastError = $state<string | null>(null);
   let communityQueryStatus = $state<string | null>(null);
   let communityEvents = $state<NostrEvent[]>([]);
-  const canConfigureCalendar = $derived(
-    Boolean(
-      communityContext?.writeTargets.calendar?.canWrite ||
-        communityContext?.writeTargets.calendarDate?.canWrite
-    )
-  );
+  let communityCapabilities = $state<CommunityWriteCapability[]>([]);
+  const canConfigureCalendar = $derived(communityCapabilities.some((capability) => capability.canWrite));
   const calendarSectionNames = $derived(
     Array.from(
-      new Set([
-        ...(communityContext?.writeTargets.calendar?.sectionNames ?? []),
-        ...(communityContext?.writeTargets.calendarDate?.sectionNames ?? []),
-      ])
+      new Set(communityCapabilities.flatMap((capability) => capability.sectionNames))
     )
   );
+
+  const getCommunityContextKey = (ctx: CommunityWidgetContext | null) =>
+    ctx ? `${ctx.contextSessionId}:${ctx.contextVersion}` : '';
+
+  const responseMatchesContext = (
+    response: { contextSessionId?: string; contextVersion?: number },
+    expectedContext: CommunityWidgetContext
+  ) =>
+    response.contextSessionId === expectedContext.contextSessionId &&
+    response.contextVersion === expectedContext.contextVersion;
+
+  async function refreshCommunityCapabilities(ctx = communityContext): Promise<void> {
+    if (!bridge || !ctx) return;
+
+    const expectedContext = ctx;
+    lastError = null;
+
+    try {
+      const res = await bridge.request('community:checkWriteCapabilities', {
+        descriptors: CALENDAR_DESCRIPTORS,
+      });
+
+      if (res && typeof res === 'object' && 'error' in res && typeof res.error === 'string') {
+        lastError = res.error;
+        return;
+      }
+
+      if (!responseMatchesContext(res, expectedContext)) return;
+      communityCapabilities = Array.isArray(res.capabilities) ? res.capabilities : [];
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+  }
 
   // Initialize bridge and set up handlers
   $effect(() => {
@@ -57,8 +92,21 @@
       communityContext = initPayload?.communityContext ?? null;
       const ver = initPayload?.hostVersion ?? 'unknown';
       status = communityContext
-        ? `Connected (host v${ver}) — community context ready`
+        ? `Connected (host v${ver}) — community context ${getCommunityContextKey(communityContext)}`
         : `Connected (host v${ver})`;
+      void refreshCommunityCapabilities(communityContext);
+    });
+
+    const offCommunityChanged = b.onEvent('community:contextChanged', (payload) => {
+      communityContext = payload.communityContext ?? null;
+      communityCapabilities = [];
+      status = communityContext
+        ? `Community context updated — ${getCommunityContextKey(communityContext)}`
+        : 'Community context unavailable';
+      void refreshCommunityCapabilities(communityContext);
+      if (communityContext && communityEvents.length > 0) {
+        void queryCommunityCalendarEvents(communityContext);
+      }
     });
 
     // Listen for repo context updates (for repo-scoped extensions)
@@ -82,6 +130,7 @@
 
     return () => {
       offInit();
+      offCommunityChanged();
       offRepoUpdate();
       offContextUpdate();
       b.destroy();
@@ -165,16 +214,17 @@
     }
   }
 
-  async function queryCommunityCalendarTargets(): Promise<void> {
-    if (!bridge || !communityContext) return;
+  async function queryCommunityCalendarEvents(ctx = communityContext): Promise<void> {
+    if (!bridge || !ctx) return;
 
-    communityQueryStatus = 'Querying community calendar targets...';
+    const expectedContext = ctx;
+    communityQueryStatus = 'Querying community calendar events by descriptor...';
     communityEvents = [];
     lastError = null;
 
     try {
-      const res = await bridge.request('community:queryTargetEvents', {
-        targetIds: ['calendar', 'calendarDate'],
+      const res = await bridge.request('community:queryEvents', {
+        descriptors: CALENDAR_DESCRIPTORS,
         limit: 10,
       });
 
@@ -184,8 +234,9 @@
         return;
       }
 
+      if (!responseMatchesContext(res, expectedContext)) return;
       communityEvents = 'events' in res && Array.isArray(res.events) ? res.events : [];
-      communityQueryStatus = `Loaded ${communityEvents.length} community target event(s)`;
+      communityQueryStatus = `Loaded ${communityEvents.length} community event(s)`;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       lastError = msg;
@@ -239,14 +290,16 @@
           <dd class="pubkey">{communityContext.pubkey}</dd>
           <dt>Relays:</dt>
           <dd>{communityContext.relays.join(', ') || 'none'}</dd>
+          <dt>Context version:</dt>
+          <dd>{getCommunityContextKey(communityContext)}</dd>
           <dt>Calendar sections:</dt>
           <dd>{calendarSectionNames.join(', ') || 'not configured'}</dd>
           <dt>Calendar config access:</dt>
           <dd>{canConfigureCalendar ? 'yes' : 'no'}</dd>
         </dl>
         <p class="hint">
-          Use write target capabilities for configuration gates. Do not hide already configured
-          community content from readers just because they cannot write that target.
+          Use descriptor capabilities for configuration gates. Do not hide already configured
+          community content from readers just because they cannot write that descriptor.
         </p>
       {/if}
 
@@ -300,13 +353,13 @@
     </div>
 
     <div class="action-group">
-      <h3>Community Target Query</h3>
+      <h3>Community Descriptor Query</h3>
       <p class="hint">
-        This asks the host for events by logical target IDs. The host maps those IDs to the
-        active community's renamed sections and authorized writers before querying relays.
+        This asks the host for events by Nostr event descriptors. The host maps descriptors to
+        active community sections and authorized writers before querying relays.
       </p>
-      <button onclick={queryCommunityCalendarTargets} disabled={!bridge || !communityContext}>
-        Query Calendar Targets
+      <button onclick={() => queryCommunityCalendarEvents()} disabled={!bridge || !communityContext}>
+        Query Calendar Events
       </button>
       {#if communityQueryStatus}
         <p class="result">{communityQueryStatus}</p>

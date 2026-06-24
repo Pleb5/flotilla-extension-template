@@ -58,7 +58,7 @@ pnpm manifest:generate \
   --identifier "my-smart-widget" \
   --version "1.0.0" \
   --changelog "Initial release" \
-  --permissions "nostr:publish,nostr:query,nostr:subscribe,community:queryTargetEvents,ui:toast" \
+  --permissions "nostr:publish,nostr:query,nostr:subscribe,community:checkWriteCapabilities,community:queryEvents,ui:toast" \
   --nostr-kinds "30301,30302" \
   --output "dist/widget"
 ```
@@ -71,7 +71,7 @@ Notes:
 - `--fallback-app-urls` is optional. Use it for Blossom mirrors or other HTTPS artifact URLs; BudaBit tries them if the primary URL fails.
 - `--pubkey` is optional; if provided, publishing instructions can include an `naddr` hint.
 - `--nostr-kinds` declares which Nostr event kinds your widget needs to query/subscribe to.
-- `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions, and `community:queryTargetEvents` if it asks the host for section-aware community target events.
+- `--permissions` should include `nostr:subscribe` if your widget uses real-time subscriptions, and `community:checkWriteCapabilities` / `community:queryEvents` if it asks the host for descriptor-based community capabilities or events.
 
 ## 5) Test the widget against a minimal host (local)
 

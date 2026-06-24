@@ -21,7 +21,8 @@ export type { NostrEvent };
  *   storage:remove       — remove a key from per-extension storage
  *   storage:keys         — list all keys in per-extension storage
  *   context:getRepo      — get the current repo context (if available)
- *   community:queryTargetEvents — query active-community events by logical write target
+ *   community:checkWriteCapabilities — check active-community write access by event descriptor
+ *   community:queryEvents — query active-community events by event descriptor
  *   ui:toast             — show a toast notification in the host UI
  *   ui:resize            — request the host to resize the extension iframe
  *
@@ -31,6 +32,7 @@ export type { NostrEvent };
  *   widget:unmounting     — extension is about to be removed
  *   context:repoUpdate   — repo context has changed (for repo-scoped extensions)
  *   context:update       — @deprecated alias for context:repoUpdate (will be removed in v2.0)
+ *   community:contextChanged — active community context changed; refetch capabilities/queries
  *   nostr:event          — a new event from a nostr:subscribe subscription
  *   nostr:eose           — end of stored events for a subscription
  *
@@ -75,25 +77,13 @@ export type WidgetInitPayload = {
   [k: string]: unknown;
 };
 
-export type CommunityWriteTargetId =
-  | 'roomRoot'
-  | 'roomMessage'
-  | 'thread'
-  | 'comment'
-  | 'reaction'
-  | 'report'
-  | 'label'
-  | 'calendarDate'
-  | 'calendar'
-  | 'goal'
-  | 'repository'
-  | 'permalink'
-  | 'widget';
-
-export type CommunityWriteTargetContext = {
-  id: CommunityWriteTargetId | string;
+export type CommunityEventDescriptor = {
   kind: number;
   subtype?: string;
+};
+
+export type CommunityWriteCapability = {
+  descriptor: CommunityEventDescriptor;
   sectionNames: string[];
   writableSectionNames: string[];
   canWrite: boolean;
@@ -106,6 +96,8 @@ export type CommunitySectionContext = {
 
 export type CommunityWidgetContext = {
   version: 1;
+  contextSessionId: string;
+  contextVersion: number;
   pubkey: string;
   ncommunity: string;
   relays: string[];
@@ -123,7 +115,6 @@ export type CommunityWidgetContext = {
     isOwner: boolean;
     isBanned: boolean;
   };
-  writeTargets: Record<string, CommunityWriteTargetContext>;
 };
 
 /**
@@ -238,16 +229,37 @@ export type StorageKeysResponse = { status: 'ok'; keys: string[] } | BridgeError
 export type ContextGetRepoRequest = Record<string, never>;
 export type ContextGetRepoResponse = { status: 'ok'; repo: RepoContext | null } | BridgeError;
 
-// --- community:queryTargetEvents ---
+// --- community:checkWriteCapabilities ---
 
-export type CommunityQueryTargetEventsRequest = {
-  targetIds: CommunityWriteTargetId[] | string[];
+export type CommunityCheckWriteCapabilitiesRequest = {
+  descriptors: CommunityEventDescriptor[];
+};
+export type CommunityCheckWriteCapabilitiesResponse =
+  | {
+      status: 'ok';
+      capabilities: CommunityWriteCapability[];
+      contextSessionId: string;
+      contextVersion: number;
+    }
+  | BridgeError;
+
+// --- community:queryEvents ---
+
+export type CommunityQueryEventsRequest = {
+  descriptors: CommunityEventDescriptor[];
   limit?: number;
   since?: number;
   until?: number;
 };
-export type CommunityQueryTargetEventsResponse =
-  | { status: 'ok'; events: NostrEvent[]; relays: string[]; targetIds: string[] }
+export type CommunityQueryEventsResponse =
+  | {
+      status: 'ok';
+      events: NostrEvent[];
+      relays: string[];
+      descriptors: CommunityEventDescriptor[];
+      contextSessionId: string;
+      contextVersion: number;
+    }
   | BridgeError;
 
 // --- ui:toast ---
@@ -281,9 +293,14 @@ export interface WidgetActionMap {
     res: NostrQueryResponse;
   };
 
-  'community:queryTargetEvents': {
-    req: CommunityQueryTargetEventsRequest;
-    res: CommunityQueryTargetEventsResponse;
+  'community:checkWriteCapabilities': {
+    req: CommunityCheckWriteCapabilitiesRequest;
+    res: CommunityCheckWriteCapabilitiesResponse;
+  };
+
+  'community:queryEvents': {
+    req: CommunityQueryEventsRequest;
+    res: CommunityQueryEventsResponse;
   };
 
   'ui:toast': {
@@ -312,6 +329,13 @@ export interface WidgetActionMap {
   };
   'context:repoUpdate': {
     event: RepoContext & { contextId?: string; userPubkey?: string; relays?: string[] };
+  };
+  'community:contextChanged': {
+    event: {
+      contextSessionId: string;
+      contextVersion: number;
+      communityContext: CommunityWidgetContext;
+    };
   };
   /** @deprecated Use context:repoUpdate instead */
   'context:update': {

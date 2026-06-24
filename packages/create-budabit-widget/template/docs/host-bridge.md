@@ -78,7 +78,8 @@ The host is responsible for:
     ["permission", "nostr:publish"],
     ["permission", "nostr:query"],
     ["permission", "nostr:subscribe"],
-    ["permission", "community:queryTargetEvents"],
+    ["permission", "community:checkWriteCapabilities"],
+    ["permission", "community:queryEvents"],
     ["permission", "ui:toast"],
     ["nostrKinds", "30301"],
     ["nostrKinds", "30302"]
@@ -280,9 +281,31 @@ const bridge = createHostWidgetBridge({
       };
     }
 
-    if (action === 'community:queryTargetEvents') {
-      // Host maps logical target IDs to active community sections and writers first.
-      return { status: 'ok', events: [], relays: [], targetIds: ['calendar'] };
+    if (action === 'community:checkWriteCapabilities') {
+      return {
+        status: 'ok',
+        capabilities: [
+          {
+            descriptor: { kind: 31923 },
+            sectionNames: ['Events and meetups'],
+            writableSectionNames: ['Events and meetups'],
+            canWrite: true,
+          },
+        ],
+        contextSessionId: 'runtime-session-id',
+        contextVersion: 0,
+      };
+    }
+
+    if (action === 'community:queryEvents') {
+      return {
+        status: 'ok',
+        events: [],
+        relays: [],
+        descriptors: [{ kind: 31923 }],
+        contextSessionId: 'runtime-session-id',
+        contextVersion: 0,
+      };
     }
 
     throw new Error(`Unknown action: ${action}`);
@@ -301,6 +324,8 @@ bridge.postEvent('widget:init', {
   },
   communityContext: {
     version: 1,
+    contextSessionId: 'runtime-session-id',
+    contextVersion: 0,
     pubkey: '<community-pubkey>',
     ncommunity: 'ncommunity://...',
     relays: ['wss://relay.example.com'],
@@ -308,15 +333,25 @@ bridge.postEvent('widget:init', {
     blossomServers: [],
     sections: [{ name: 'Events and meetups', kinds: [{ kind: 31923 }, { kind: 31922 }] }],
     viewer: { pubkey: '<viewer-pubkey>', isOwner: false, isBanned: false },
-    writeTargets: {
-      calendar: {
-        id: 'calendar',
-        kind: 31923,
-        sectionNames: ['Events and meetups'],
-        writableSectionNames: ['Events and meetups'],
-        canWrite: true,
-      },
-    },
+  },
+});
+
+// When community definition, relays, grants, moderation state, or viewer pubkey changes,
+// increment contextVersion and notify widgets to refetch descriptor capabilities/events.
+bridge.postEvent('community:contextChanged', {
+  contextSessionId: 'runtime-session-id',
+  contextVersion: 1,
+  communityContext: {
+    version: 1,
+    contextSessionId: 'runtime-session-id',
+    contextVersion: 1,
+    pubkey: '<community-pubkey>',
+    ncommunity: 'ncommunity://...',
+    relays: ['wss://relay.example.com'],
+    relayHints: ['wss://relay.example.com'],
+    blossomServers: [],
+    sections: [{ name: 'Events and meetups', kinds: [{ kind: 31923 }, { kind: 31922 }] }],
+    viewer: { pubkey: '<viewer-pubkey>', isOwner: false, isBanned: false },
   },
 });
 
@@ -358,33 +393,42 @@ function onRepoChange(newRepo) {
 
 ### All Registered Actions
 
-| Action              | Permission        | Description                                     |
-| ------------------- | ----------------- | ----------------------------------------------- |
-| `nostr:publish`     | `nostr:publish`   | Sign and publish via welshman                   |
-| `nostr:query`       | `nostr:query`     | One-shot relay query (EOSE-based + 15s timeout) |
-| `nostr:subscribe`   | `nostr:subscribe` | Persistent subscription (max 10/extension)      |
-| `nostr:unsubscribe` | —                 | Close subscription by ID                        |
-| `ui:toast`          | — (rate limited)  | Toast notification                              |
-| `ui:resize`         | — (rate limited)  | Iframe height change                            |
-| `storage:get`       | `storage:get`     | Read scoped storage                             |
-| `storage:set`       | `storage:set`     | Write scoped storage                            |
-| `storage:remove`    | `storage:remove`  | Remove from scoped storage                      |
-| `storage:keys`      | `storage:keys`    | List storage keys                               |
-| `context:getRepo`   | —                 | Get repo context                                |
-| `community:queryTargetEvents` | `community:queryTargetEvents` | Query active-community events by logical write target |
+| Action                               | Permission                         | Description                                     |
+| ------------------------------------ | ---------------------------------- | ----------------------------------------------- |
+| `nostr:publish`                      | `nostr:publish`                    | Sign and publish via welshman                   |
+| `nostr:query`                        | `nostr:query`                      | One-shot relay query (EOSE-based + 15s timeout) |
+| `nostr:subscribe`                    | `nostr:subscribe`                  | Persistent subscription (max 10/extension)      |
+| `nostr:unsubscribe`                  | —                                  | Close subscription by ID                        |
+| `ui:toast`                           | — (rate limited)                   | Toast notification                              |
+| `ui:resize`                          | — (rate limited)                   | Iframe height change                            |
+| `storage:get`                        | `storage:get`                      | Read scoped storage                             |
+| `storage:set`                        | `storage:set`                      | Write scoped storage                            |
+| `storage:remove`                     | `storage:remove`                   | Remove from scoped storage                      |
+| `storage:keys`                       | `storage:keys`                     | List storage keys                               |
+| `context:getRepo`                    | —                                  | Get repo context                                |
+| `community:checkWriteCapabilities`   | `community:checkWriteCapabilities` | Check community write access by descriptor      |
+| `community:queryEvents`              | `community:queryEvents`            | Query active-community events by descriptor     |
 
-### `community:queryTargetEvents` — Section-Aware Community Queries
+### Descriptor Community APIs
 
-Community section names can be renamed per community. Widgets should request events by logical write target IDs instead of hard-coding section names or reconstructing profile-list grants.
+Community section names are mutable, and BudaBit communities decide which sections support which event kinds. Widgets should request capabilities and events by Nostr event descriptor instead of BudaBit taxonomy names:
 
 ```ts
-const res = await bridge.request('community:queryTargetEvents', {
-  targetIds: ['calendar', 'calendarDate'],
+const calendarDescriptors = [{ kind: 31923 }, { kind: 31922 }];
+
+const capabilities = await bridge.request('community:checkWriteCapabilities', {
+  descriptors: calendarDescriptors,
+});
+
+const events = await bridge.request('community:queryEvents', {
+  descriptors: calendarDescriptors,
   limit: 10,
 });
 ```
 
-The host resolves each target against the active community definition, maps it to the current section names and authorized writer pubkeys, then constructs the relay filters. The action is privileged and requires a `permission` tag. Use `communityContext.writeTargets[targetId].canWrite` to gate configuration controls; content visibility should not be gated by write access.
+The host resolves each `{kind, subtype?}` descriptor against the active community definition, maps it to actual section names and authorized writer pubkeys, then constructs relay filters. If no active section supports a descriptor, the host returns an error rather than falling back to a default section name. Use descriptor capability `canWrite` values to gate configuration controls only; content visibility should not be gated by write access.
+
+Both responses include `contextSessionId` and `contextVersion`. If a response does not match the widget's current community context, ignore it and refetch. The host sends `community:contextChanged` when the runtime community context changes after `widget:init`.
 
 ### `nostr:subscribe` — Persistent Subscriptions
 

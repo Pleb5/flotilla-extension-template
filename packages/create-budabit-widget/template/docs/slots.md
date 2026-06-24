@@ -153,7 +153,7 @@ bridge.onEvent('widget:init', (payload) => {
   if (payload.communityContext) {
     console.log('Community:', payload.communityContext.ncommunity);
     console.log('Sections:', payload.communityContext.sections);
-    console.log('Calendar write access:', payload.communityContext.writeTargets.calendar?.canWrite);
+    console.log('Context version:', payload.communityContext.contextVersion);
   }
 
   if (payload.roomContext) {
@@ -166,18 +166,26 @@ bridge.onEvent('widget:init', (payload) => {
 });
 ```
 
-`communityContext.writeTargets` is keyed by logical target IDs such as `calendar`, `calendarDate`, `repository`, `widget`, `roomRoot`, and `roomMessage`. Each target reports the current community section names and writable section names, so widgets should use these mappings instead of hard-coding section names.
+`communityContext.sections` reports the active community's actual section names and supported event descriptors. It does not include write-target taxonomy names. Ask the host about write access with `{kind, subtype?}` descriptors so the host can resolve the active community definition, grants, and moderation state.
 
-To query community-targeted events, request `community:queryTargetEvents` with logical target IDs. The host maps those IDs to the active community's sections and authorized writers before constructing relay filters:
+To check write access or query community-targeted events, request descriptor-based bridge actions:
 
 ```typescript
-const res = await bridge.request('community:queryTargetEvents', {
-  targetIds: ['calendar', 'calendarDate'],
+const calendarDescriptors = [{ kind: 31923 }, { kind: 31922 }];
+
+const capabilities = await bridge.request('community:checkWriteCapabilities', {
+  descriptors: calendarDescriptors,
+});
+
+const res = await bridge.request('community:queryEvents', {
+  descriptors: calendarDescriptors,
   limit: 10,
 });
 ```
 
-Declare `community:queryTargetEvents` as a `permission` tag when using this action. Use write target `canWrite` values to gate configuration controls only; do not hide already configured community content from readers just because they cannot write that target.
+Declare `community:checkWriteCapabilities` and `community:queryEvents` as `permission` tags when using these actions. If no active section supports a descriptor, the host returns an error instead of falling back to a default section. Use descriptor `canWrite` values to gate configuration controls only; do not hide already configured community content from readers just because they cannot write that descriptor.
+
+The host sends `community:contextChanged` when runtime community context changes after `widget:init`. Refetch descriptor capabilities and events when `contextVersion` changes, and ignore stale responses whose `contextSessionId` / `contextVersion` no longer match the current context.
 
 ## Design Notes
 
