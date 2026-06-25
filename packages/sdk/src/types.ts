@@ -72,6 +72,9 @@ export type WidgetInitPayload = {
   relays?: string[];
   hostVersion?: string;
   extensionId?: string;
+  appOrigin?: string;
+  theme?: 'light' | 'dark';
+  themeBackground?: string;
   repo?: RepoContext;
   communityContext?: CommunityWidgetContext;
   [k: string]: unknown;
@@ -86,7 +89,15 @@ export type CommunityWriteCapability = {
   descriptor: CommunityEventDescriptor;
   sectionNames: string[];
   writableSectionNames: string[];
+  moderatorSectionNames: string[];
   canWrite: boolean;
+  canModerate: boolean;
+};
+
+export type CommunitySharedConfigScope = {
+  namespace: string;
+  key: string;
+  descriptors: CommunityEventDescriptor[];
 };
 
 export type CommunitySectionContext = {
@@ -262,6 +273,37 @@ export type CommunityQueryEventsResponse =
     }
   | BridgeError;
 
+// --- community:querySharedConfig ---
+
+export type CommunityQuerySharedConfigRequest = CommunitySharedConfigScope & {
+  limit?: number;
+};
+export type CommunityQuerySharedConfigResponse =
+  | {
+      status: 'ok';
+      event?: NostrEvent;
+      config?: unknown;
+      relays: string[];
+      contextSessionId: string;
+      contextVersion: number;
+    }
+  | BridgeError;
+
+// --- community:publishSharedConfig ---
+
+export type CommunityPublishSharedConfigRequest = CommunitySharedConfigScope & {
+  config: unknown;
+};
+export type CommunityPublishSharedConfigResponse =
+  | {
+      status: 'ok';
+      eventId?: string;
+      relays: string[];
+      contextSessionId: string;
+      contextVersion: number;
+    }
+  | BridgeError;
+
 // --- ui:toast ---
 
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
@@ -271,6 +313,11 @@ export type UiToastRequest = {
   type?: ToastType;
 };
 export type UiToastResponse = { status: 'ok' } | BridgeError;
+
+// --- ui:navigate ---
+
+export type UiNavigateRequest = { path: string };
+export type UiNavigateResponse = { status: 'ok' } | BridgeError;
 
 // --- ui:resize ---
 
@@ -303,9 +350,23 @@ export interface WidgetActionMap {
     res: CommunityQueryEventsResponse;
   };
 
+  'community:querySharedConfig': {
+    req: CommunityQuerySharedConfigRequest;
+    res: CommunityQuerySharedConfigResponse;
+  };
+
+  'community:publishSharedConfig': {
+    req: CommunityPublishSharedConfigRequest;
+    res: CommunityPublishSharedConfigResponse;
+  };
+
   'ui:toast': {
     req: UiToastRequest;
     res: UiToastResponse;
+  };
+  'ui:navigate': {
+    req: UiNavigateRequest;
+    res: UiNavigateResponse;
   };
   'ui:resize': {
     req: UiResizeRequest;
@@ -321,6 +382,9 @@ export interface WidgetActionMap {
   };
   'widget:unmounting': {
     event: { timestamp: number };
+  };
+  'widget:themeChanged': {
+    event: { theme: 'light' | 'dark'; themeBackground?: string };
   };
 
   // Extension → Host events (one-way)
