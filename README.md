@@ -8,7 +8,7 @@ This template provides a production-ready foundation for creating **iframe-based
 - A **sandboxed iframe UI** (Svelte 5)
 - A **typed, action-based postMessage bridge** compatible with BudaBit
 
-> **Note:** This template is specifically for **Smart Widgets (kind 30033)**. BudaBit also supports **NIP-89 Manifest Extensions (kind 31990)**, which use a different discovery and registration model. For NIP-89 extensions, see the [BudaBit Extension Developer Guide](../../docs/extensions/README.md) which covers both extension types comprehensively.
+> **Note:** This template is specifically for **Smart Widgets (kind 30033)**, the supported extension model in BudaBit.
 
 ## What is a Smart Widget?
 
@@ -317,16 +317,15 @@ Smart Widget docs live in `docs/` and cover:
 - [Security](./docs/security.md) - Security guidelines
 - [Quick Start](./docs/quickstart.md) - Getting started guide
 
-### Extension Types in BudaBit
+### Extension Model in BudaBit
 
-BudaBit supports two complementary extension models:
+BudaBit extensions are Smart Widgets:
 
 | Model | Event Kind | Discovery | Use Case |
 |-------|-----------|-----------|----------|
 | **Smart Widgets** (this template) | 30033 | YakiHonne relays | Rich, event-based widgets rendered inline or in iframes |
-| **NIP-89 Manifest Extensions** | 31990 | INDEXER_RELAYS or HTTPS URL | Full iframe apps with JSON manifests |
 
-For comprehensive documentation covering both models, including migration guidance and interoperability, see the [BudaBit Extension Developer Guide](../../docs/extensions/README.md).
+For host-specific behavior, slots, permissions, and interoperability, see the [BudaBit Extension Developer Guide](../../docs/extensions/README.md).
 
 ## License
 

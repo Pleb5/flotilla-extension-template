@@ -4,7 +4,7 @@ Get a BudaBit **Smart Widget** up and running in a few minutes.
 
 This template builds an **iframe-based widget** and generates an **unsigned Nostr kind `30033`** event you can sign + publish.
 
-> **Note:** This guide covers Smart Widgets specifically. BudaBit also supports NIP-89 Manifest Extensions (kind 31990). For guidance on choosing between extension types or building NIP-89 extensions, see the [BudaBit Extension Developer Guide](../../../docs/extensions/README.md).
+> **Note:** This guide covers Smart Widgets, the supported extension model in BudaBit. For host-specific behavior, see the [BudaBit Extension Developer Guide](../../../docs/extensions/README.md).
 
 ## Prerequisites
 

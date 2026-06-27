@@ -2,14 +2,9 @@
 
 Guide to BudaBit **Smart Widget** metadata published to Nostr as a **kind `30033` addressable event**.
 
-Smart Widgets are one of two extension models supported by BudaBit. The other model is **NIP-89 Manifest Extensions (kind 31990)**, which use JSON manifests for configuration. Both models coexist and serve different use cases:
+Smart Widgets are the supported extension model in BudaBit. They are event-based, discovered as kind `30033` events, and can render inline or launch iframe widgets using the `button` tag.
 
-- **Smart Widgets (kind 30033)**: Event-based, discovered via YakiHonne relays, ideal for rich inline widgets
-- **NIP-89 Extensions (kind 31990)**: Manifest-based, discovered via INDEXER_RELAYS or direct URL, ideal for full-featured iframe apps
-
-For comprehensive documentation covering both models, see the [BudaBit Extension Developer Guide](../../../docs/extensions/README.md).
-
-This document focuses on the Smart Widget event structure. BudaBit discovers Smart Widgets via kind `30033` events and launches iframe widgets using the `button` tag.
+For host-specific behavior, see the [BudaBit Extension Developer Guide](../../../docs/extensions/README.md).
 
 ## Overview
 
