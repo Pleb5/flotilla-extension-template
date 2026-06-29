@@ -168,7 +168,7 @@ export interface WidgetJsonOptions {
 /**
  * Generate the optional `/.well-known/widget.json` discovery file.
  *
- * NOTE: This file is part of the NIP-XX ecosystem (YakiHonne tooling). BudaBit primarily
+ * NOTE: This file is part of the Smart Widget discovery ecosystem. BudaBit primarily
  * installs widgets via the kind 30033 event (naddr), but emitting this helps interoperability.
  */
 export function generateWidgetJson(options: WidgetJsonOptions): string {
@@ -205,9 +205,9 @@ export function generatePublishingInstructions(): string {
 
 ## Recommended Relays
 
-BudaBit currently discovers Smart Widgets via YakiHonne relays (and naddr relay hints):
+BudaBit currently discovers Smart Widgets via configured relay hints:
 
-- \`wss://relay.yakihonne.com\`
+- \`wss://budabit.nostr1.com\`
 
 You can publish to additional relays for redundancy.
 
@@ -224,7 +224,7 @@ const sk = process.env.NOSTR_SK;
 if (!sk) throw new Error('Missing NOSTR_SK');
 
 const relays = [
-  'wss://relay.yakihonne.com',
+  'wss://budabit.nostr1.com',
 ];
 
 const signed = finalizeEvent(widgetEvent, sk);

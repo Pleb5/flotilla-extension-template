@@ -323,7 +323,7 @@ BudaBit extensions are Smart Widgets:
 
 | Model | Event Kind | Discovery | Use Case |
 |-------|-----------|-----------|----------|
-| **Smart Widgets** (this template) | 30033 | YakiHonne relays | Rich, event-based widgets rendered inline or in iframes |
+| **Smart Widgets** (this template) | 30033 | BudaBit relay hints | Rich, event-based widgets rendered inline or in iframes |
 
 For host-specific behavior, slots, permissions, and interoperability, see the [BudaBit Extension Developer Guide](../../docs/extensions/README.md).
 

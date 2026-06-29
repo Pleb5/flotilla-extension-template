@@ -25,7 +25,7 @@ interface PublishOptions {
 }
 
 const DEFAULT_RELAYS = [
-  'wss://relay.yakihonne.com',
+  'wss://budabit.nostr1.com',
   'wss://relay.damus.io',
   'wss://nos.lol',
 ];

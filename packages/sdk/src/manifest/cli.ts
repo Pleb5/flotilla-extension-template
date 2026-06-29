@@ -71,7 +71,7 @@ export const SUPPORTED_SLOT_TYPES: WidgetSlotType[] = [
   'global-menu',
 ];
 
-const DEFAULT_SMART_WIDGET_RELAYS = ['wss://relay.yakihonne.com'];
+const DEFAULT_SMART_WIDGET_RELAYS = ['wss://budabit.nostr1.com'];
 
 function isWidgetSlotType(value: string): value is WidgetSlotType {
   return SUPPORTED_SLOT_TYPES.includes(value as WidgetSlotType);
@@ -207,7 +207,7 @@ program
       console.log(`📖 Publishing instructions: ${instructionsPath}\n`);
       console.log('Next steps:');
       console.log('  1. Sign event.json with nostr-tools (see PUBLISHING.md)');
-      console.log('  2. Publish to Smart Widget relays (e.g. wss://relay.yakihonne.com)');
+      console.log('  2. Publish to Smart Widget relays (e.g. wss://budabit.nostr1.com)');
       console.log('  3. Install in BudaBit using the resulting naddr\n');
     } catch (error) {
       console.error('❌ Error generating Smart Widget:', error);
